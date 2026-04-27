@@ -20,4 +20,9 @@ public class CroissantConfigWorld extends ConfigurationPart {
         public int levelThree = 40;
         public int levelFour = 50;
     }
+
+    public PistonConfig pistonConfig;
+    public class PistonConfig extends ConfigurationPart {
+        public int pushLimit = 12;
+    }
 }
