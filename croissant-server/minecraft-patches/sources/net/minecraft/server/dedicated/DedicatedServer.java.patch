@@ -1,0 +1,13 @@
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -298,6 +_,10 @@
+         }
+         // Canvas end - pre start server config hook
+         // Paper end - initialize global and world-defaults configuration
++        // Croissant start - initialize global and world-defaults configuration
++        this.croissantHandlers.initializeGlobalConfiguration(this.registryAccess());
++        this.croissantHandlers.initializeWorldDefaultsConfiguration(this.registryAccess());
++        // Croissant end - initialize global and world-defaults configuration
+         this.server.spark.enableEarlyIfRequested(); // Paper - spark
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+         if (this.convertOldUsers()) {

@@ -1,0 +1,27 @@
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -178,6 +_,7 @@
+ import net.minecraft.world.waypoints.WaypointTransmitter;
+ import org.jspecify.annotations.Nullable;
+ import org.slf4j.Logger;
++import org.spigotmc.SpigotWorldConfig;
+ 
+ public class ServerLevel extends Level implements ServerEntityGetter, WorldGenLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemServerLevel, ca.spottedleaf.moonrise.patches.chunk_system.level.ChunkSystemLevelReader, ca.spottedleaf.moonrise.patches.chunk_tick_iteration.ChunkTickServerLevel { // Paper - rewrite chunk system // Paper - chunk tick iteration
+     public static final BlockPos END_SPAWN_POINT = new BlockPos(100, 50, 0);
+@@ -622,7 +_,15 @@
+         org.bukkit.generator.BiomeProvider biomeProvider // CraftBukkit
+     ) {
+         // CraftBukkit start
+-        super(serverLevelData, dimension, server.registryAccess(), levelStem.type(), false, isDebug, biomeZoomSeed, server.getMaxChainedNeighborUpdates(), gen, biomeProvider, env, spigotConfig -> server.paperConfigurations.createWorldConfig(io.papermc.paper.configuration.PaperConfigurations.createWorldContextMap(levelStorageAccess.levelDirectory.path(), serverLevelData.getLevelName(), dimension.identifier(), spigotConfig, server.registryAccess(), serverLevelData.getGameRules())), dispatcher); // Paper - create paper world configs & Async-Anti-Xray: Pass executor
++        super(serverLevelData, dimension, server.registryAccess(), levelStem.type(), false, isDebug, biomeZoomSeed, server.getMaxChainedNeighborUpdates(), gen, biomeProvider, env, spigotConfig -> server.paperConfigurations.createWorldConfig(io.papermc.paper.configuration.PaperConfigurations.createWorldContextMap(levelStorageAccess.levelDirectory.path(), serverLevelData.getLevelName(), dimension.identifier(), spigotConfig, server.registryAccess(), serverLevelData.getGameRules())), spigotConfig -> server.croissantHandlers.createWorldConfig(
++                fr.euphyllia.croissant.configuration.CroissantConfigHandlers.createWorldContextMap(
++                        serverLevelData.getLevelName(),
++                        dimension.identifier(), levelStorageAccess.levelDirectory.path(),
++                        spigotConfig,
++                        server.registryAccess(),
++                        serverLevelData.getGameRules()
++                )
++        ), dispatcher); // Paper - create paper world configs & Async-Anti-Xray: Pass executor
+         this.levelStorageAccess = levelStorageAccess;
+         this.uuid = org.bukkit.craftbukkit.util.WorldUUID.getOrCreate(levelStorageAccess.levelDirectory.path().toFile());
+         this.levelLoadListener = new net.minecraft.server.level.progress.LoggingLevelLoadListener(false, this);

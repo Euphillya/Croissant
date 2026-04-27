@@ -1,0 +1,32 @@
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -153,6 +_,8 @@
+         return this.paperConfig;
+     }
+     // Paper end - add paper world config
++    // Croissand start - add croissant world config
++    public final fr.euphyllia.croissant.configuration.CroissantConfigWorld croissant;
+ 
+     public static @Nullable BlockPos lastPhysicsProblem; // Spigot
+     //private int tileTickPosition; // Folia - region threading
+@@ -844,7 +_,11 @@
+         org.bukkit.generator.@Nullable BiomeProvider biomeProvider, // Paper
+         org.bukkit.World.Environment environment, // Paper
+         java.util.function.Function<org.spigotmc.SpigotWorldConfig, // Spigot - create per world config
+-        io.papermc.paper.configuration.WorldConfiguration> paperWorldConfigCreator, // Paper - create paper world config
++        io.papermc.paper.configuration.WorldConfiguration> paperWorldConfigCreator, // Paper - create paper world config,
++        // Croissant start - create croissant world config
++        java.util.function.Function<org.spigotmc.SpigotWorldConfig,
++        fr.euphyllia.croissant.configuration.CroissantConfigWorld> croissantWorldConfigCreator,
++        // Croissant end -  create croissant world config
+         java.util.concurrent.Executor executor // Paper - Anti-Xray
+     ) {
+         // Paper start - getblock optimisations - cache world height/sections
+@@ -858,6 +_,7 @@
+         // Paper end - getblock optimisations - cache world height/sections
+         this.spigotConfig = new org.spigotmc.SpigotWorldConfig(((net.minecraft.world.level.storage.PrimaryLevelData) levelData).getLevelName()); // Spigot
+         this.paperConfig = paperWorldConfigCreator.apply(this.spigotConfig); // Paper - create paper world config
++        this.croissant = croissantWorldConfigCreator.apply(this.spigotConfig); // Croissant - create croissant world config
+         this.generator = generator;
+         this.world = new CraftWorld((ServerLevel) this, generator, biomeProvider, environment);
+ 

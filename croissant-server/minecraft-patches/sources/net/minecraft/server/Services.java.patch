@@ -1,0 +1,45 @@
+--- a/net/minecraft/server/Services.java
++++ b/net/minecraft/server/Services.java
+@@ -19,6 +_,7 @@
+     UserNameToIdResolver nameToIdCache,
+     ProfileResolver profileResolver
+     , @javax.annotation.Nullable PaperServices paper // Paper
++    , @javax.annotation.Nullable CroissantServices croissant // Croissant
+ ) {
+     public static final String USERID_CACHE_FILE = "usercache.json";
+ 
+@@ -28,8 +_,16 @@
+         io.papermc.paper.profile.PaperFilledProfileCache filledProfileCache
+     ) {}
+ 
++    public record CroissantServices(
++            fr.euphyllia.croissant.configuration.CroissantConfigHandlers croissantConfigHandlers
++    ) {}
++
+     public Services(MinecraftSessionService sessionService, ServicesKeySet servicesKeySet, GameProfileRepository profileRepository, UserNameToIdResolver nameToIdCache, ProfileResolver profileResolver) {
+-        this(sessionService, servicesKeySet, profileRepository, nameToIdCache, profileResolver, null);
++        this(sessionService, servicesKeySet, profileRepository, nameToIdCache, profileResolver, null, null);
++    }
++
++    public CroissantServices croissantServices() {
++        return java.util.Objects.requireNonNull(this.croissant);
+     }
+ 
+     @Override
+@@ -50,8 +_,15 @@
+             paperConfigurations,
+             new io.papermc.paper.profile.PaperFilledProfileCache()
+         );
++
++        var croissantConfigHandlers =
++                fr.euphyllia.croissant.configuration.CroissantConfigHandlers.setup(configDirPath);
++
++        var croissantServices = new CroissantServices(
++                croissantConfigHandlers
++        );
+         ProfileResolver profileResolver = new ProfileResolver.Cached(minecraftSessionService, userNameToIdResolver, paperServices.filledProfileCache());
+-        return new Services(minecraftSessionService, authenticationService.getServicesKeySet(), gameProfileRepository, userNameToIdResolver, profileResolver, paperServices);
++        return new Services(minecraftSessionService, authenticationService.getServicesKeySet(), gameProfileRepository, userNameToIdResolver, profileResolver, paperServices, croissantServices);
+         // Paper end - load paper config files from cli options
+     }
+ 

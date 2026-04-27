@@ -1,0 +1,13 @@
+--- a/src/main/java/io/papermc/paper/command/subcommands/ReloadCommand.java
++++ b/src/main/java/io/papermc/paper/command/subcommands/ReloadCommand.java
+@@ -28,8 +_,9 @@
+ 
+         MinecraftServer server = ((CraftServer) sender.getServer()).getServer();
+         server.paperConfigurations.reloadConfigs(server);
++        server.croissantHandlers.reloadConfigs(server); // Croissant - relaod croissant configurations
+         server.server.reloadCount++;
+ 
+-        Command.broadcastCommandMessage(sender, text("Paper config reload complete.", GREEN));
++        Command.broadcastCommandMessage(sender, text("Paper and Croissant config reload complete.", GREEN));
+     }
+ }
