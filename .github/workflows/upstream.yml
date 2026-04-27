@@ -1,0 +1,161 @@
+name: Update upstream
+
+on:
+  schedule:
+    - cron: "0 6 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  update-upstream:
+    runs-on: ubuntu-latest
+    env:
+      PLUGIN_ID: "io.canvasmc.weaver.patcher"
+      FILE_PATH: "build.gradle.kts"
+      UPSTREAM_BRANCH: "ver/1.21.11"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Authenticate
+        run: |
+          git config --global user.name "baguette-maintainer-bot"
+          git config --global user.email "baguette.maintainer.bot@gmail.com"
+          gh auth login --with-token <<< "${{ secrets.BOT_TOKEN }}"
+
+      - name: Check if workflow should run
+        id: check_should_run
+        run: |
+          ISSUE=$(gh issue list --author baguette-maintainer-bot --state open --json number --jq '.[0].number // empty')
+          CURRENT_CANVAS_COMMIT=$(grep '^canvasCommit' gradle.properties | awk -F '=' '{print $2}' | tr -d '[:space:]' | tr -d '\r')
+          LATEST_CANVAS_COMMIT=$(curl -s https://api.github.com/repos/CraftCanvasMC/Canvas/commits/$UPSTREAM_BRANCH | jq -r '.sha' | tr -d '[:space:]' | tr -d '\r')
+
+          echo "ISSUE=$ISSUE" >> $GITHUB_ENV
+          echo "CURRENT_CANVAS_COMMIT=$CURRENT_CANVAS_COMMIT" >> $GITHUB_ENV
+          echo "LATEST_CANVAS_COMMIT=$LATEST_CANVAS_COMMIT" >> $GITHUB_ENV
+
+          if [ "$ISSUE" != "" ] || [ "$CURRENT_CANVAS_COMMIT" = "$LATEST_CANVAS_COMMIT" ]; then
+            echo "SKIP_WORKFLOW=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_WORKFLOW=false" >> $GITHUB_ENV
+          fi
+
+      - name: Fetch upstream and local Weaver versions
+        id: weaver_versions
+        if: env.SKIP_WORKFLOW == 'false'
+        run: |
+          UPSTREAM_GRADLE=$(curl -s -H "Accept: application/vnd.github.v3.raw" \
+            https://raw.githubusercontent.com/CraftCanvasMC/Canvas/$UPSTREAM_BRANCH/build.gradle.kts)
+
+          UPSTREAM_WEAVER_VERSION=$(echo "$UPSTREAM_GRADLE" | \
+            grep "$PLUGIN_ID" | \
+            sed -E 's/.*version "([^"]+)".*/\1/' | \
+            tr -d '[:space:]\r' | \
+            head -n1)
+
+          LOCAL_WEAVER_VERSION=$(grep "$PLUGIN_ID" "$FILE_PATH" | \
+            sed -E 's/.*version "([^"]+)".*/\1/' | \
+            tr -d '[:space:]\r' | \
+            head -n1)
+
+          echo "UPSTREAM_WEAVER_VERSION=$UPSTREAM_WEAVER_VERSION" >> $GITHUB_ENV
+          echo "LOCAL_WEAVER_VERSION=$LOCAL_WEAVER_VERSION" >> $GITHUB_ENV
+
+          echo "Local Weaver version: $LOCAL_WEAVER_VERSION"
+          echo "Upstream Weaver version: $UPSTREAM_WEAVER_VERSION"
+
+      - name: Update weaver version
+        if: env.SKIP_WORKFLOW == 'false' && env.UPSTREAM_WEAVER_VERSION != env.LOCAL_WEAVER_VERSION && env.UPSTREAM_WEAVER_VERSION != ''
+        run: |
+          echo "Updating weaver-patcher from $LOCAL_WEAVER_VERSION to $UPSTREAM_WEAVER_VERSION in $FILE_PATH"
+          sed -i -E "s/(id\\(\"$PLUGIN_ID\"\\)[^\"]*version \")[^\"]+(\")/\1$UPSTREAM_WEAVER_VERSION\2/" "$FILE_PATH"
+
+      - name: Update canvas refs
+        id: upstream_refs
+        if: env.SKIP_WORKFLOW == 'false'
+        run: |
+          UPSTREAM_FILE=$(curl -s https://raw.githubusercontent.com/CraftCanvasMC/Canvas/$UPSTREAM_BRANCH/gradle.properties)
+          UPSTREAM_MC_VERSION=$(echo "$UPSTREAM_FILE" | grep '^mcVersion' | awk -F '=' '{print $2}' | tr -d ' ')
+          UPSTREAM_API_VERSION=$(echo "$UPSTREAM_FILE" | grep '^apiVersion' | awk -F '=' '{print $2}' | tr -d ' ')
+          UPSTREAM_VERSION=$(echo "$UPSTREAM_FILE" | grep '^version' | awk -F '=' '{print $2}' | tr -d ' ')
+          echo "UPSTREAM_MC_VERSION=$UPSTREAM_MC_VERSION" >> $GITHUB_ENV
+          echo "UPSTREAM_API_VERSION=$UPSTREAM_API_VERSION" >> $GITHUB_ENV
+          echo "UPSTREAM_VERSION=$UPSTREAM_VERSION" >> $GITHUB_ENV
+
+          echo "Latest Canvas commit: $LATEST_CANVAS_COMMIT"
+
+          echo "Updating canvasCommit in gradle.properties to $LATEST_CANVAS_COMMIT"
+          sed -i -E "s/^(canvasCommit = ).*$/\1$LATEST_CANVAS_COMMIT/" gradle.properties
+
+          CURRENT_MC_VERSION=$(grep '^mcVersion' gradle.properties | awk -F '=' '{print $2}' | tr -d ' ')
+          CURRENT_API_VERSION=$(grep '^apiVersion' gradle.properties | awk -F '=' '{print $2}' | tr -d ' ')
+          if [ "$CURRENT_MC_VERSION" != "$UPSTREAM_MC_VERSION" ]; then
+            echo "Updating mcVersion & apiVersion from $CURRENT_MC_VERSION , $CURRENT_API_VERSION to $UPSTREAM_MC_VERSION , $UPSTREAM_API_VERSION"
+            sed -i -E "s/^(mcVersion = ).*$/\1$UPSTREAM_MC_VERSION/" gradle.properties
+            sed -i -E "s/^(apiVersion = ).*$/\1$UPSTREAM_API_VERSION/" gradle.properties
+
+            CURRENT_VERSION=$(grep '^version' gradle.properties | awk -F '=' '{print $2}' | tr -d ' ')
+            echo "Updating version from $CURRENT_VERSION to $UPSTREAM_VERSION"
+            sed -i -E "s/^(version = ).*$/\1$UPSTREAM_VERSION/" gradle.properties
+          else
+            echo "mcVersion is already up-to-date ($CURRENT_MC_VERSION), [api]version remains unchanged"
+          fi
+
+      - name: JDK 25
+        uses: actions/setup-java@v5
+        if: env.SKIP_WORKFLOW == 'false'
+        with:
+          java-version: 25
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        if: env.SKIP_WORKFLOW == 'false'
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run Gradle build
+        id: build
+        if: env.SKIP_WORKFLOW == 'false'
+        run: |
+          ./gradlew applyAllPatches || ./gradlew applyCanvasSingleFilePatchesFuzzy || echo "APPLY_FAILED=true" >> $GITHUB_ENV
+          ./gradlew rebuildCanvasSingleFilePatches
+          # We apply twice here in case build files conflict, before reporting apply as failed
+          ./gradlew applyAllPatches || echo "APPLY_FAILED=true" >> $GITHUB_ENV
+          ./gradlew rebuildPaperApiPatches
+          ./gradlew rebuildFoliaApiPatches
+          ./gradlew rebuildAllServerPatches
+          ./gradlew compileJava || echo "BUILD_FAILED=true" >> $GITHUB_ENV
+        continue-on-error: true
+
+      - name: Create an issue if apply failed
+        if: env.APPLY_FAILED == 'true' && env.SKIP_WORKFLOW == 'false'
+        run: |
+          gh issue create \
+            --title "[BOT] Failed to apply Baguette patches" \
+            --body "Failed to apply patches after updating Canvas to $LATEST_CANVAS_COMMIT" \
+    
+      - name: Create an issue if build failed
+        if: env.BUILD_FAILED == 'true' && env.SKIP_WORKFLOW == 'false'
+        run: |
+          gh issue create \
+            --title "[BOT] Failed to build Baguette" \
+            --body "Failed to build after updating Canvas to $LATEST_CANVAS_COMMIT" \
+
+      - name: Generate commit description
+        if: env.BUILD_FAILED != 'true' && env.APPLY_FAILED != 'true' && env.SKIP_WORKFLOW == 'false'
+        run: |
+          UPDATES=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/CraftCanvasMC/Canvas/compare/$CURRENT_CANVAS_COMMIT...$LATEST_CANVAS_COMMIT" \
+            | jq -r '.commits[] | "CraftCanvasMC/Canvas@\(.sha[:7]) - \(.commit.message | split("\n")[0])"')
+
+          DISCLAIMER="Upstream has released updates that appear to apply and compile correctly. The changes in this commit are automated, meaning there might be things missing."
+
+          COMMIT_MESSAGE="Updated upstream (Canvas)\n\n${DISCLAIMER}\n\nCanvas Changes:\n${UPDATES}"
+
+          echo -e "$COMMIT_MESSAGE" > commit_message.txt
+  
+      - name: Commit changes
+        if: env.BUILD_FAILED != 'true' && env.APPLY_FAILED != 'true' && env.SKIP_WORKFLOW == 'false'
+        run: |
+          git add .
+          git restore --staged commit_message.txt
+          git commit -F commit_message.txt
+          git push https://x-access-token:${{ secrets.PUSH_TOKEN }}@github.com/${{ github.repository }}.git
