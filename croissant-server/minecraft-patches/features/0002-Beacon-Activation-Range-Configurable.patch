@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bierque Euphyllia <bierque.euphyllia@gmail.com>
+Date: Mon, 27 Apr 2026 22:05:54 +0200
+Subject: [PATCH] Beacon Activation Range Configurable
+
+
+diff --git a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
+index deaac59e24dcc8c259567545507b52ca383f391e..377da7ecc8e91785c9cbfda2b0e54395cf2c7c13 100644
+--- a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
+@@ -138,6 +138,15 @@ public class BeaconBlockEntity extends BlockEntity implements MenuProvider, Name
+ 
+     public double getEffectRange() {
+         if (this.effectRange < 0) {
++            if (this.getLevel() != null) {
++                return switch (this.levels) {
++                    case 1 -> this.getLevel().croissant.beaconConfig.levelOne;
++                    case 2 -> this.getLevel().croissant.beaconConfig.levelTwo;
++                    case 3 -> this.getLevel().croissant.beaconConfig.levelThree;
++                    case 4 -> this.getLevel().croissant.beaconConfig.levelFour;
++                    default -> this.levels * 10 + 10;
++                };
++            }
+             return this.levels * 10 + 10;
+         } else {
+             return effectRange;

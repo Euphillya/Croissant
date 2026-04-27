@@ -13,4 +13,11 @@ public class CroissantConfigWorld extends ConfigurationPart {
     public int version = CURRENT_VERSION;
 
 
+    public BeaconConfig beaconConfig;
+    public class BeaconConfig extends ConfigurationPart {
+        public int levelOne = 20;
+        public int levelTwo = 30;
+        public int levelThree = 40;
+        public int levelFour = 50;
+    }
 }
