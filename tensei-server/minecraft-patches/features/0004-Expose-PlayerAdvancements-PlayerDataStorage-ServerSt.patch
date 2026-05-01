@@ -1,0 +1,158 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bierque Euphyllia <bierque.euphyllia@gmail.com>
+Date: Fri, 1 May 2026 17:29:09 +0200
+Subject: [PATCH] Expose PlayerAdvancements - PlayerDataStorage -
+ ServerStatsCounter in TenseiMC
+
+
+diff --git a/net/minecraft/server/PlayerAdvancements.java b/net/minecraft/server/PlayerAdvancements.java
+index 658db8460122db271bbc3c2c0844574b8d75f044..d78d041847ac5e770a1eb9bccecf7bef29bd789c 100644
+--- a/net/minecraft/server/PlayerAdvancements.java
++++ b/net/minecraft/server/PlayerAdvancements.java
+@@ -45,7 +45,7 @@ import net.minecraft.world.level.gamerules.GameRules;
+ import org.jspecify.annotations.Nullable;
+ import org.slf4j.Logger;
+ 
+-public class PlayerAdvancements {
++public class PlayerAdvancements implements fr.euphyllia.tenseimc.server.PlayerAdvancementHandler { // TenseiMC
+     private static final Logger LOGGER = LogUtils.getLogger();
+     private static final Gson GSON = new GsonBuilder().create(); // Paper - Remove pretty printing from advancements
+     private final PlayerList playerList;
+@@ -55,10 +55,10 @@ public class PlayerAdvancements {
+     private final Set<AdvancementHolder> visible = new HashSet<>();
+     private final Set<AdvancementHolder> progressChanged = new HashSet<>();
+     private final Set<AdvancementNode> rootsToUpdate = new HashSet<>();
+-    private ServerPlayer player;
++    protected ServerPlayer player; // TenseiMC - expose player
+     private @Nullable AdvancementHolder lastSelectedTab;
+     private boolean isFirstPacket = true;
+-    private final Codec<PlayerAdvancements.Data> codec;
++    protected final Codec<PlayerAdvancements.Data> codec; // TenseiMC - expose codec
+     public final Map<net.minecraft.advancements.criterion.SimpleCriterionTrigger<?>, Set<CriterionTrigger.Listener<?>>> criterionData = new java.util.IdentityHashMap<>(); // Paper - fix advancement data player leakage
+ 
+     public PlayerAdvancements(
+@@ -95,13 +95,13 @@ public class PlayerAdvancements {
+         this.load(manager);
+     }
+ 
+-    private void registerListeners(final ServerAdvancementManager manager) {
++    protected void registerListeners(final ServerAdvancementManager manager) { // TenseiMC
+         for (AdvancementHolder advancement : manager.getAllAdvancements()) {
+             this.registerListeners(advancement);
+         }
+     }
+ 
+-    private void checkForAutomaticTriggers(final ServerAdvancementManager manager) {
++    protected void checkForAutomaticTriggers(final ServerAdvancementManager manager) { // TenseiMC
+         for (AdvancementHolder holder : manager.getAllAdvancements()) {
+             Advancement advancement = holder.value();
+             if (advancement.criteria().isEmpty()) {
+@@ -111,7 +111,7 @@ public class PlayerAdvancements {
+         }
+     }
+ 
+-    private void load(final ServerAdvancementManager manager) {
++    @Override public void load(final ServerAdvancementManager manager) { // TenseiMC
+         if (Files.isRegularFile(this.playerSavePath)) {
+             try (Reader reader = Files.newBufferedReader(this.playerSavePath, StandardCharsets.UTF_8)) {
+                 JsonElement json = StrictJsonParser.parse(reader);
+@@ -128,6 +128,7 @@ public class PlayerAdvancements {
+         this.registerListeners(manager);
+     }
+ 
++    @Override // TenseiMC
+     public void save() {
+         if (org.spigotmc.SpigotConfig.disableAdvancementSaving) return; // Spigot
+         JsonElement json = this.codec.encodeStart(JsonOps.INSTANCE, this.asData()).getOrThrow();
+@@ -143,7 +144,7 @@ public class PlayerAdvancements {
+         }
+     }
+ 
+-    private void applyFrom(final ServerAdvancementManager manager, final PlayerAdvancements.Data data) {
++    protected void applyFrom(final ServerAdvancementManager manager, final PlayerAdvancements.Data data) { // TenseiMC
+         data.forEach((id, progress) -> {
+             AdvancementHolder advancement = manager.get(id);
+             if (advancement == null) {
+@@ -157,7 +158,7 @@ public class PlayerAdvancements {
+         });
+     }
+ 
+-    private PlayerAdvancements.Data asData() {
++    protected PlayerAdvancements.Data asData() { // TenseiMC
+         Map<Identifier, AdvancementProgress> map = new LinkedHashMap<>();
+         this.progress.forEach((advancement, progress) -> {
+             if (progress.hasProgress()) {
+@@ -335,7 +336,7 @@ public class PlayerAdvancements {
+         });
+     }
+ 
+-    private record Data(Map<Identifier, AdvancementProgress> map) {
++    protected record Data(Map<Identifier, AdvancementProgress> map) { // TenseiMC
+         public static final Codec<PlayerAdvancements.Data> CODEC = Codec.unboundedMap(Identifier.CODEC, AdvancementProgress.CODEC)
+             .xmap(PlayerAdvancements.Data::new, PlayerAdvancements.Data::map);
+ 
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index 5c97fdb66d0e78c03cacc922159b4e5f97bd946f..033fd40beefe89599bcd68b91ea44d561f6774af 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -542,6 +542,10 @@ public abstract class PlayerList {
+         }
+         // Paper end - Drop carried item when player has disconnected
+         this.save(player);
++        // TenseiMC start - force save stats + advancements disconnect
++        player.getStats().save();
++        player.getAdvancements().save();
++        // TenseiMC end - force save stats + advancements disconnect
+         if (player.isPassenger()) {
+             Entity vehicle = player.getRootVehicle();
+             if (vehicle.hasExactlyOnePlayerPassenger()) {
+diff --git a/net/minecraft/stats/ServerStatsCounter.java b/net/minecraft/stats/ServerStatsCounter.java
+index 6764f97ac88d63c1e1d4f62014d4c16b929767e8..d49d7cf1e652054d3ae0c5833ab5df31dc9cd7aa 100644
+--- a/net/minecraft/stats/ServerStatsCounter.java
++++ b/net/minecraft/stats/ServerStatsCounter.java
+@@ -38,7 +38,7 @@ import net.minecraft.util.datafix.DataFixTypes;
+ import net.minecraft.world.entity.player.Player;
+ import org.slf4j.Logger;
+ 
+-public class ServerStatsCounter extends StatsCounter {
++public class ServerStatsCounter extends StatsCounter implements fr.euphyllia.tenseimc.server.ServerStatsCounterHandler {
+     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+     private static final Logger LOGGER = LogUtils.getLogger();
+     private static final Codec<Map<Stat<?>, Integer>> STATS_CODEC = Codec.dispatchedMap(
+@@ -88,6 +88,7 @@ public class ServerStatsCounter extends StatsCounter {
+         // Paper end - Moved after stat fetching for player state file
+     }
+ 
++    @Override // TenseiMC
+     public void save() {
+         if (org.spigotmc.SpigotConfig.disableStatSaving) return; // Spigot
+         try {
+diff --git a/net/minecraft/world/level/storage/PlayerDataStorage.java b/net/minecraft/world/level/storage/PlayerDataStorage.java
+index c5898bfb8b4f075b08090cba2e9f980174e0a326..e5c1fb0d2e87ff98b671076949f046838571861c 100644
+--- a/net/minecraft/world/level/storage/PlayerDataStorage.java
++++ b/net/minecraft/world/level/storage/PlayerDataStorage.java
+@@ -19,7 +19,7 @@ import net.minecraft.util.datafix.DataFixTypes;
+ import net.minecraft.world.entity.player.Player;
+ import org.slf4j.Logger;
+ 
+-public class PlayerDataStorage {
++public class PlayerDataStorage implements fr.euphyllia.tenseimc.server.PlayerDataHandler {
+     private static final Logger LOGGER = LogUtils.getLogger();
+     private final File playerDir;
+     protected final DataFixer fixerUpper;
+@@ -30,6 +30,7 @@ public class PlayerDataStorage {
+         this.playerDir.mkdirs();
+     }
+ 
++    @Override // TenseiMC
+     public void save(final Player player) {
+         if (org.spigotmc.SpigotConfig.disablePlayerDataSaving) return; // Spigot
+         try (ProblemReporter.ScopedCollector reporter = new ProblemReporter.ScopedCollector(player.problemPath(), LOGGER)) {
+@@ -90,6 +91,7 @@ public class PlayerDataStorage {
+         return Optional.empty();
+     }
+ 
++    @Override // TenseiMC
+     public Optional<CompoundTag> load(final NameAndId nameAndId) {
+         Optional<CompoundTag> optTag = this.load(nameAndId, ".dat");
+         if (optTag.isEmpty()) {
