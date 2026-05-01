@@ -1,0 +1,41 @@
+--- a/net/minecraft/server/Services.java
++++ b/net/minecraft/server/Services.java
+@@ -19,6 +_,7 @@
+     UserNameToIdResolver nameToIdCache,
+     ProfileResolver profileResolver
+     , @Nullable PaperServices paper // Paper
++    , @Nullable TenseiServices tensei // TenseiMC
+ ) {
+     public static final String USERID_CACHE_FILE = "usercache.json";
+ 
+@@ -28,8 +_,17 @@
+         io.papermc.paper.profile.PaperFilledProfileCache filledProfileCache
+     ) {}
+ 
++    public record TenseiServices(
++            fr.euphyllia.tenseimc.configuration.TenseiConfigHandlers tenseiConfigHandlers
++    ) {
++    }
++
+     public Services(MinecraftSessionService sessionService, ServicesKeySet servicesKeySet, GameProfileRepository profileRepository, UserNameToIdResolver nameToIdCache, ProfileResolver profileResolver) {
+-        this(sessionService, servicesKeySet, profileRepository, nameToIdCache, profileResolver, null);
++        this(sessionService, servicesKeySet, profileRepository, nameToIdCache, profileResolver, null, null);
++    }
++
++    public TenseiServices tenseiServices() {
++        return java.util.Objects.requireNonNull(this.tensei);
+     }
+ 
+     @Override
+@@ -50,8 +_,10 @@
+             paperConfigurations,
+             new io.papermc.paper.profile.PaperFilledProfileCache()
+         );
++        var tenseiConfigHandlers = fr.euphyllia.tenseimc.configuration.TenseiConfigHandlers.setup(configDirPath);
++        var teinseitServices = new TenseiServices(tenseiConfigHandlers);
+         ProfileResolver profileResolver = new ProfileResolver.Cached(sessionService, profileCache, paperServices.filledProfileCache());
+-        return new Services(sessionService, serviceAccess.getServicesKeySet(), profileRepository, profileCache, profileResolver, paperServices);
++        return new Services(sessionService, serviceAccess.getServicesKeySet(), profileRepository, profileCache, profileResolver, paperServices, tenseiServices);
+         // Paper end - load paper config files from cli options
+     }
+ 

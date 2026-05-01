@@ -3,7 +3,7 @@ import java.util.Locale
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        maven("https://maven.canvasmc.io/releases")
+        maven("https://maven.canvasmc.io/public")
     }
 }
 
@@ -13,8 +13,8 @@ plugins {
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "croissant"
-for (name in listOf("croissant-api", "croissant-server")) {
+rootProject.name = "tenseimc"
+for (name in listOf("tensei-api", "tensei-server")) {
     val projName = name.lowercase(Locale.ENGLISH)
     include(projName)
     findProject(":$projName")!!.projectDir = file(name)

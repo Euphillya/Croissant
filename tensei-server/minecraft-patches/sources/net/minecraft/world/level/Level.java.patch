@@ -1,0 +1,28 @@
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -171,6 +_,9 @@
+     }
+     // Canvas end - world config
+ 
++    // TenseiMC start - world config
++    public final fr.euphyllia.tenseimc.configuration.TenseiConfigWorld tensei;
++
+     public static @Nullable BlockPos lastPhysicsProblem; // Spigot
+     //public final Map<ServerExplosion.CacheKey, Float> explosionDensityCache = new java.util.HashMap<>(); // Paper - Optimize explosions // Folia - region threading
+     //public java.util.ArrayDeque<net.minecraft.world.level.block.RedstoneTorchBlock.Toggle> redstoneUpdateInfos; // Paper - Faster redstone torch rapid clock removal; Move from Map in BlockRedstoneTorch to here // Folia - region threading
+@@ -862,6 +_,7 @@
+         org.bukkit.World.Environment environment, // Paper
+         java.util.function.Function<org.spigotmc.SpigotWorldConfig, // Spigot - create per world config
+         io.papermc.paper.configuration.WorldConfiguration> paperWorldConfigCreator, // Paper - create paper world config
++        java.util.function.Function<org.spigotmc.SpigotWorldConfig, fr.euphyllia.tensei.configuration.TenseiConfigWorld> tenseiWorldConfigCreator,
+         java.util.concurrent.Executor executor // Paper - Anti-Xray
+     ) {
+         // Paper start - getblock optimisations - cache world height/sections
+@@ -876,6 +_,7 @@
+         final org.bukkit.NamespacedKey worldKey = CraftNamespacedKey.fromMinecraft(dimension.identifier()); // Paper
+         this.spigotConfig = new org.spigotmc.SpigotWorldConfig(bukkitName, worldKey); // Spigot
+         this.paperConfig = paperWorldConfigCreator.apply(this.spigotConfig); // Paper - create paper world config
++        this.tensei = tenseiWorldConfigCreator.apply(this.spigotConfig); // TenseiMC - create Tensei world config
+         this.generator = generator;
+         this.world = new CraftWorld((ServerLevel) this, worldKey, biomeProvider, environment);
+ 

@@ -1,0 +1,18 @@
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -315,6 +_,7 @@
+     public volatile boolean abnormalExit; // Paper - Improved watchdog support
+     public volatile Thread shutdownThread; // Paper - Improved watchdog support
+     public final io.papermc.paper.configuration.PaperConfigurations paperConfigurations; // Paper - add paper configuration files
++    public final fr.euphyllia.tenseimc.configuration.TenseiConfigHandlers tenseiHandlers; // TenseiMC - add tensei configuration handlers
+     public boolean isIteratingOverLevels = false; // Paper - Throw exception on world create while being ticked
+     private final Set<String> pluginsBlockingSleep = new java.util.HashSet<>(); // Paper - API to allow/disallow tick sleeping
+     public static final long SERVER_INIT = System.nanoTime(); // Paper - Lag compensation
+@@ -614,6 +_,7 @@
+         Runtime.getRuntime().addShutdownHook(new org.bukkit.craftbukkit.util.ServerShutdownThread(this));
+         // CraftBukkit end
+         this.paperConfigurations = services.paper().configurations(); // Paper - add paper configuration files
++        this.tenseiHandlers = services.tensei().tenseiConfigHandlers(); // TenseiMC - add tensei configuration files
+         this.pearls = io.canvasmc.canvas.world.entity.EnderPearls.read(storageSource.getLevelPath(LevelResource.DATA)); // Canvas - region threading
+     }
+ 

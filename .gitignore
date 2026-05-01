@@ -6,9 +6,9 @@ build
 
 /run
 
-/croissant-server/build.gradle.kts
-/croissant-server/src/minecraft
-/croissant-api/build.gradle.kts
+/tensei-server/build.gradle.kts
+/tensei-server/src/minecraft
+/tensei-api/build.gradle.kts
 /canvas-api
 /canvas-server
 /folia-api

@@ -1,0 +1,13 @@
+--- a/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -319,6 +_,10 @@
+         }
+         // Canvas end - pre start server config hook
+         // Paper end - initialize global and world-defaults configuration
++        // TenseiMC start - initialize global and world-defaults configuration
++        this.tenseiHandlers.initializeGlobalConfiguration(this.registryAccess());
++        this.tenseiHandlers.initializeWorldDefaultsConfiguration(this.registryAccess());
++        // TenseiMC end - initialize global and world-defaults configuration
+         this.server.spark.enableEarlyIfRequested(); // Paper - spark
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+         if (this.convertOldUsers()) {

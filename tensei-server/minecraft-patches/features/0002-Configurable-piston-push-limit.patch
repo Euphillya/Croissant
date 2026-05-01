@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bierque Euphyllia <bierque.euphyllia@gmail.com>
+Date: Fri, 1 May 2026 13:32:47 +0200
+Subject: [PATCH] Configurable piston push limit
+
+
+diff --git a/net/minecraft/world/level/block/piston/PistonStructureResolver.java b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
+index 4881cf351f673a38905aebb660fcdb218d69158d..37fe4f61c0e11f6e941680b9ef23fca10a9f8fdc 100644
+--- a/net/minecraft/world/level/block/piston/PistonStructureResolver.java
++++ b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
+@@ -81,7 +81,7 @@ public class PistonStructureResolver {
+             return true;
+         } else {
+             int blockCount = 1;
+-            if (blockCount + this.toPush.size() > 12) {
++            if (blockCount + this.toPush.size() > this.level.tensei.pistonConfig.pushLimit) {
+                 return false;
+             } else {
+                 while (isSticky(nextState)) {
+@@ -95,7 +95,7 @@ public class PistonStructureResolver {
+                         break;
+                     }
+ 
+-                    if (++blockCount + this.toPush.size() > 12) {
++                    if (++blockCount + this.toPush.size() > this.level.tensei.pistonConfig.pushLimit) {
+                         return false;
+                     }
+                 }
+@@ -139,7 +139,7 @@ public class PistonStructureResolver {
+                         return true;
+                     }
+ 
+-                    if (this.toPush.size() >= 12) {
++                    if (this.toPush.size() >= this.level.tensei.pistonConfig.pushLimit) {
+                         return false;
+                     }
+ 

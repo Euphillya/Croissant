@@ -1,14 +1,11 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
 import io.papermc.paperweight.core.tasks.patching.ApplyBasePatches
 import io.papermc.paperweight.core.tasks.patching.ApplyFeaturePatches
-import io.papermc.paperweight.tasks.RebuildBaseGitPatches
-import io.papermc.paperweight.tasks.RebuildGitPatches
-import io.papermc.paperweight.tasks.CreatePublisherJar
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     java
-    id("io.canvasmc.weaver.patcher") version "2.3.12" // always keep in check with canvas's actual used release
+    id("io.canvasmc.weaver.patcher") version "2.4.2" // always keep in check with canvas's actual used release
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
@@ -24,17 +21,17 @@ paperweight {
 
         patchFile {
             path = "canvas-server/build.gradle.kts"
-            outputFile = file("croissant-server/build.gradle.kts")
-            patchFile = file("croissant-server/build.gradle.kts.patch")
+            outputFile = file("tensei-server/build.gradle.kts")
+            patchFile = file("tensei-server/build.gradle.kts.patch")
         }
         patchFile {
             path = "canvas-api/build.gradle.kts"
-            outputFile = file("croissant-api/build.gradle.kts")
-            patchFile = file("croissant-api/build.gradle.kts.patch")
+            outputFile = file("tensei-api/build.gradle.kts")
+            patchFile = file("tensei-api/build.gradle.kts.patch")
         }
         patchRepo("paperApi") {
             upstreamPath = "paper-api"
-            patchesDir = file("croissant-api/paper-patches")
+            patchesDir = file("tensei-api/paper-patches")
             // Thanks to weaver, you can also use ATs for all sources, not just the minecraft one.
             // By default, when weaver is looking for an AT file for a patch source set, it looks under the `build-data` dir for an AT file under the name of the patch set.
             // For this patchRepo, it would look for paperApi.at because 'paperApi` is the name of the source set, as declared in the `patchRepo("paperApi")` field.
@@ -44,13 +41,13 @@ paperweight {
         }
         patchRepo("foliaApi") {
             upstreamPath = "folia-api"
-            patchesDir = file("croissant-api/folia-patches")
+            patchesDir = file("tensei-api/folia-patches")
             outputDir = file("folia-api")
         }
         patchDir("canvasApi") {
             upstreamPath = "canvas-api"
             excludes = listOf("build.gradle.kts", "build.gradle.kts.patch", "paper-patches", "folia-patches")
-            patchesDir = file("croissant-api/canvas-patches")
+            patchesDir = file("tensei-api/canvas-patches")
             outputDir = file("canvas-api")
 	    }
     }
@@ -62,7 +59,7 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
 
@@ -77,7 +74,7 @@ subprojects {
     }
     tasks.withType<JavaCompile>().configureEach {
         options.encoding = Charsets.UTF_8.name()
-        options.release = 21
+        options.release = 25
         options.isFork = true
         options.compilerArgs.addAll(listOf("-Xlint:-deprecation", "-Xlint:-removal"))
     }

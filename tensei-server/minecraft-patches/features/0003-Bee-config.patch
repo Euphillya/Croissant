@@ -1,0 +1,304 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Bierque Euphyllia <bierque.euphyllia@gmail.com>
+Date: Fri, 1 May 2026 13:43:13 +0200
+Subject: [PATCH] Bee config
+
+
+diff --git a/net/minecraft/world/entity/animal/bee/Bee.java b/net/minecraft/world/entity/animal/bee/Bee.java
+index 3dfe5f49dacce42b5f36c290a9354823135170bb..c6ac4da09d2f3b63ee013eaa6f8f8ba7c1c869ae 100644
+--- a/net/minecraft/world/entity/animal/bee/Bee.java
++++ b/net/minecraft/world/entity/animal/bee/Bee.java
+@@ -257,11 +257,12 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+             EnchantmentHelper.doPostAttackEffects(level, target, damageSource);
+             if (target instanceof LivingEntity livingTarget) {
+                 livingTarget.setStingerCount(livingTarget.getStingerCount() + 1);
++                var beeCfg = this.level().tensei.mobsConfig.beeConfig; // TenseiMC
+                 int poisonTime = 0;
+                 if (this.level().getDifficulty() == Difficulty.NORMAL) {
+-                    poisonTime = 10;
++                    poisonTime = beeCfg.poisonSecondsNormal; // TenseiMC
+                 } else if (this.level().getDifficulty() == Difficulty.HARD) {
+-                    poisonTime = 18;
++                    poisonTime = beeCfg.poisonSecondsHard; // TenseiMC
+                 }
+ 
+                 if (poisonTime > 0) {
+@@ -280,7 +281,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+     @Override
+     public void tick() {
+         super.tick();
+-        if (this.hasNectar() && this.getCropsGrownSincePollination() < 10 && this.random.nextFloat() < 0.05F) {
++        if (this.hasNectar() && this.getCropsGrownSincePollination() < this.level().tensei.mobsConfig.beeConfig.maxCropsGrowable && this.random.nextFloat() < 0.05F) {
+             for (int i = 0; i < this.random.nextInt(2) + 1; i++) {
+                 this.spawnFluidParticle(
+                     this.level(), this.getX() - 0.3F, this.getX() + 0.3F, this.getZ() - 0.3F, this.getZ() + 0.3F, this.getY(0.5), ParticleTypes.FALLING_NECTAR
+@@ -346,30 +347,35 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+     }
+ 
+     private boolean isTiredOfLookingForNectar() {
+-        return this.ticksWithoutNectarSinceExitingHive > 3600;
++        return this.ticksWithoutNectarSinceExitingHive > this.level().tensei.mobsConfig.beeConfig.ticksWithoutNectarBeforeGoingHome; // TenseiMC
+     }
+ 
+     private void dropHive() {
+         this.hivePos = null;
+-        this.remainingCooldownBeforeLocatingNewHive = 200;
++        this.remainingCooldownBeforeLocatingNewHive = this.level().tensei.mobsConfig.beeConfig.cooldownBeforeLocatingNewHive; // TenseiMC
+     }
+ 
+     private void dropFlower() {
++        var beeCfg = this.level().tensei.mobsConfig.beeConfig; // TenseiMC
+         this.savedFlowerPos = null;
+-        this.remainingCooldownBeforeLocatingNewFlower = Mth.nextInt(this.random, 20, 60);
++        this.remainingCooldownBeforeLocatingNewFlower = Mth.nextInt(this.random, beeCfg.minFindFlowerRetryCooldown, beeCfg.maxFindFlowerRetryCooldown); // TenseiMC
+     }
+ 
+     private boolean wantsToEnterHive() {
+         if (this.stayOutOfHiveCountdown <= 0 && !this.beePollinateGoal.isPollinating() && !this.hasStung() && this.getTarget() == null) {
+             boolean wantsToEnterHive = this.hasNectar()
+                 || this.isTiredOfLookingForNectar()
+-                || this.level().environmentAttributes().getValue(EnvironmentAttributes.BEES_STAY_IN_HIVE, this.position());
++                || this.level().environmentAttributes().getValue(EnvironmentAttributes.BEES_STAY_IN_HIVE, this.position())|| isNightOrRaining(this.level()); // TenseiMC
+             return wantsToEnterHive && !this.isHiveNearFire();
+         } else {
+             return false;
+         }
+     }
+ 
++    public static boolean isNightOrRaining(Level level) {
++        return level.dimensionType().hasSkyLight() && (level.isDarkOutside() && !level.tensei.mobsConfig.beeConfig.workAtNight || level.isRaining() && !level.tensei.mobsConfig.beeConfig.workInRain);
++    }
++
+     public void setStayOutOfHiveCountdown(final int ticks) {
+         this.stayOutOfHiveCountdown = ticks;
+     }
+@@ -389,6 +395,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+     @Override
+     protected void customServerAiStep(final ServerLevel level) {
++        var beeCfg = this.level().tensei.mobsConfig.beeConfig; // TenseiMC
+         boolean hasStung = this.hasStung();
+         if (this.isInWater()) {
+             this.underWaterTicks++;
+@@ -396,13 +403,13 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+             this.underWaterTicks = 0;
+         }
+ 
+-        if (this.underWaterTicks > 20) {
++        if (this.underWaterTicks > beeCfg.underWaterTicksBeforeDamage) { // TenseiMC
+             this.hurtServer(level, this.damageSources().drown(), 1.0F);
+         }
+ 
+         if (hasStung) {
+             this.timeSinceSting++;
+-            if (this.timeSinceSting % 5 == 0 && this.random.nextInt(Mth.clamp(1200 - this.timeSinceSting, 1, 1200)) == 0) {
++            if (this.timeSinceSting % 5 == 0 && this.random.nextInt(Mth.clamp(beeCfg.stingDeathCountdown - this.timeSinceSting, 1, beeCfg.stingDeathCountdown)) == 0) { // TenseiMC
+                 this.hurtServer(level, this.damageSources().generic(), this.getHealth());
+             }
+         }
+@@ -445,7 +452,8 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+     @Override
+     public void startPersistentAngerTimer() {
+-        this.setTimeToRemainAngry(PERSISTENT_ANGER_TIME.sample(this.random));
++        var beeCfg = this.level().tensei.mobsConfig.beeConfig; // TenseiMC
++        this.setTimeToRemainAngry(Mth.nextInt(this.random, beeCfg.angerTimeMin * 20, beeCfg.angerTimeMax * 20)); // TenseiMC
+     }
+ 
+     private boolean doesHiveHaveSpace(final BlockPos hivePos) {
+@@ -496,7 +504,8 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+                 this.remainingCooldownBeforeLocatingNewFlower--;
+             }
+ 
+-            boolean shouldRoll = this.isAngry() && !this.hasStung() && this.getTarget() != null && this.getTarget().distanceToSqr(this) < 4.0;
++            int minAttackDist = this.level().tensei.mobsConfig.beeConfig.minAttackDistance; // TenseiMC
++            boolean shouldRoll = this.isAngry() && !this.hasStung() && this.getTarget() != null && this.getTarget().distanceToSqr(this) < (double)(minAttackDist * minAttackDist); // TenseiMC
+             this.setRolling(shouldRoll);
+             if (this.tickCount % 20 == 0 && !this.isHiveValid()) {
+                 this.hivePos = null;
+@@ -550,7 +559,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+     }
+ 
+     private boolean isTooFarAway(final BlockPos targetPos) {
+-        return !this.closerThan(targetPos, 48);
++        return !this.closerThan(targetPos, this.level().tensei.mobsConfig.beeConfig.tooFarDistance); // TenseiMC
+     }
+ 
+     private void setFlag(final int flag, final boolean value) {
+@@ -788,7 +797,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+         @Override
+         public boolean canBeeUse() {
+-            if (Bee.this.hivePos != null && Bee.this.wantsToEnterHive() && Bee.this.hivePos.closerToCenterThan(Bee.this.position(), 2.0)) {
++            if (Bee.this.hivePos != null && Bee.this.wantsToEnterHive() && Bee.this.hivePos.closerToCenterThan(Bee.this.position(), Bee.this.level().tensei.mobsConfig.beeConfig.hiveCloseEnoughDistance)) { // TenseiMC
+                 BeehiveBlockEntity beehiveBlockEntity = Bee.this.getBeehiveBlockEntity();
+                 if (beehiveBlockEntity != null) {
+                     if (!beehiveBlockEntity.isFull()) {
+@@ -871,11 +880,12 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         @Override
+         public void tick() {
+             if (Bee.this.hivePos != null) {
++                var beeCfg = Bee.this.level().tensei.mobsConfig.beeConfig; // TenseiMC
+                 this.travellingTicks++;
+-                if (this.travellingTicks > this.adjustedTickDelay(2400)) {
++                if (this.travellingTicks > this.adjustedTickDelay(beeCfg.maxTravellingTicksToHive)) { // TenseiMC
+                     this.dropAndBlacklistHive();
+                 } else if (!Bee.this.navigation.isInProgress()) {
+-                    if (!Bee.this.closerThan(Bee.this.hivePos, 16)) {
++                    if (!Bee.this.closerThan(Bee.this.hivePos, beeCfg.pathfindToHiveWhenCloserThan)) { // TenseiMC
+                         if (Bee.this.isTooFarAway(Bee.this.hivePos)) {
+                             Bee.this.dropHive();
+                         } else {
+@@ -887,7 +897,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+                             this.dropAndBlacklistHive();
+                         } else if (this.lastPath != null && Bee.this.navigation.getPath().sameAs(this.lastPath)) {
+                             this.ticksStuck++;
+-                            if (this.ticksStuck > 60) {
++                            if (this.ticksStuck > beeCfg.ticksBeforeHiveDrop) { // TenseiMC
+                                 Bee.this.dropHive();
+                                 this.ticksStuck = 0;
+                             }
+@@ -913,7 +923,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         private void blacklistTarget(final BlockPos targetPos) {
+             this.blacklistedTargets.add(targetPos);
+ 
+-            while (this.blacklistedTargets.size() > 3) {
++            while (this.blacklistedTargets.size() > Bee.this.level().tensei.mobsConfig.beeConfig.maxBlacklistedHives) { // TenseiMC
+                 this.blacklistedTargets.remove(0);
+             }
+         }
+@@ -931,7 +941,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         }
+ 
+         private boolean hasReachedTarget(final BlockPos targetPos) {
+-            if (Bee.this.closerThan(targetPos, 2)) {
++            if (Bee.this.closerThan(targetPos, Bee.this.level().tensei.mobsConfig.beeConfig.hiveCloseEnoughDistance)) { // TenseiMC
+                 return true;
+             } else {
+                 Path path = Bee.this.navigation.getPath();
+@@ -982,7 +992,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         public void tick() {
+             if (Bee.this.savedFlowerPos != null) {
+                 this.travellingTicks++;
+-                if (this.travellingTicks > this.adjustedTickDelay(2400)) {
++                if (this.travellingTicks > this.adjustedTickDelay(Bee.this.level().tensei.mobsConfig.beeConfig.maxTravellingTicksToFlower)) { // TenseiMC
+                     Bee.this.dropFlower();
+                 } else if (!Bee.this.navigation.isInProgress()) {
+                     if (Bee.this.isTooFarAway(Bee.this.savedFlowerPos)) {
+@@ -995,7 +1005,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         }
+ 
+         private boolean wantsToGoToKnownFlower() {
+-            return Bee.this.ticksWithoutNectarSinceExitingHive > 600;
++            return Bee.this.ticksWithoutNectarSinceExitingHive > Bee.this.level().tensei.mobsConfig.beeConfig.ticksBeforeGoingToKnownFlower; // TenseiMC
+         }
+     }
+ 
+@@ -1009,7 +1019,8 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+         @Override
+         public boolean canBeeUse() {
+-            return Bee.this.getCropsGrownSincePollination() < 10 && !(Bee.this.random.nextFloat() < 0.3F) && Bee.this.hasNectar() && Bee.this.isHiveValid();
++            var beeCfg = Bee.this.level().tensei.mobsConfig.beeConfig; // TenseiMC
++            return Bee.this.getCropsGrownSincePollination() <  beeCfg.maxCropsGrowable && !(Bee.this.random.nextFloat() < beeCfg.cropGrowSkipChance) && Bee.this.hasNectar() && Bee.this.isHiveValid(); // TenseiMC
+         }
+ 
+         @Override
+@@ -1019,7 +1030,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+         @Override
+         public void tick() {
+-            if (Bee.this.random.nextInt(this.adjustedTickDelay(30)) == 0) {
++            if (Bee.this.random.nextInt(this.adjustedTickDelay(Bee.this.level().tensei.mobsConfig.beeConfig.cropGrowChance)) == 0) { // TenseiMC
+                 for (int i = 1; i <= 2; i++) {
+                     BlockPos belowPos = Bee.this.blockPosition().below(i);
+                     BlockState belowState = Bee.this.level().getBlockState(belowPos);
+@@ -1096,7 +1107,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+         @Override
+         public void start() {
+-            Bee.this.remainingCooldownBeforeLocatingNewHive = 200;
++            Bee.this.remainingCooldownBeforeLocatingNewHive = Bee.this.level().tensei.mobsConfig.beeConfig.cooldownBeforeLocatingNewHive; // TenseiMC
+             List<BlockPos> hivesWithSpace = this.findNearbyHivesWithSpace();
+             if (!hivesWithSpace.isEmpty()) {
+                 for (BlockPos posToCheck : hivesWithSpace) {
+@@ -1114,7 +1125,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         private List<BlockPos> findNearbyHivesWithSpace() {
+             BlockPos beePos = Bee.this.blockPosition();
+             PoiManager poiManager = ((ServerLevel)Bee.this.level()).getPoiManager();
+-            Stream<PoiRecord> nearbyHives = poiManager.getInRange(p -> p.is(PoiTypeTags.BEE_HOME), beePos, Bee.HIVE_SEARCH_DISTANCE, PoiManager.Occupancy.ANY);
++            Stream<PoiRecord> nearbyHives = poiManager.getInRange(p -> p.is(PoiTypeTags.BEE_HOME), beePos, Bee.this.level().tensei.mobsConfig.beeConfig.hiveSearchDistance, PoiManager.Occupancy.ANY);
+             return nearbyHives.map(PoiRecord::getPos)
+                 .filter(Bee.this::doesHiveHaveSpace)
+                 .sorted(Comparator.comparingDouble(pos -> pos.distSqr(beePos)))
+@@ -1180,7 +1191,8 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+                         .moveTo(Bee.this.savedFlowerPos.getX() + 0.5, Bee.this.savedFlowerPos.getY() + 0.5, Bee.this.savedFlowerPos.getZ() + 0.5, 1.2F);
+                     return true;
+                 } else {
+-                    Bee.this.remainingCooldownBeforeLocatingNewFlower = Mth.nextInt(Bee.this.random, 20, 60);
++                    var beeCfg = Bee.this.level().tensei.mobsConfig.beeConfig; // TenseiMC
++                    Bee.this.remainingCooldownBeforeLocatingNewFlower = Mth.nextInt(Bee.this.random, beeCfg.minFindFlowerRetryCooldown, beeCfg.maxFindFlowerRetryCooldown); // TenseiMC
+                     return false;
+                 }
+             }
+@@ -1195,7 +1207,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         }
+ 
+         private boolean hasPollinatedLongEnough() {
+-            return this.successfulPollinatingTicks > 400;
++            return this.successfulPollinatingTicks > Bee.this.level().tensei.mobsConfig.beeConfig.minPollinationTicks; // TenseiMC
+         }
+ 
+         private boolean isPollinating() {
+@@ -1223,7 +1235,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+             this.pollinating = false;
+             Bee.this.navigation.stop();
+-            Bee.this.remainingCooldownBeforeLocatingNewFlower = 200;
++            Bee.this.remainingCooldownBeforeLocatingNewFlower = Bee.this.level().tensei.mobsConfig.beeConfig.cooldownBeforeLocatingNewFlower; // TenseiMC
+         }
+ 
+         @Override
+@@ -1234,11 +1246,12 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         @Override
+         public void tick() {
+             if (Bee.this.hasSavedFlowerPos()) {
++                var beeCfg = Bee.this.level().tensei.mobsConfig.beeConfig; // TenseiMC
+                 this.pollinatingTicks++;
+-                if (this.pollinatingTicks > 600) {
++                if (this.pollinatingTicks > beeCfg.maxPollinationTicks) { // TenseiMC
+                     Bee.this.dropFlower();
+                     this.pollinating = false;
+-                    Bee.this.remainingCooldownBeforeLocatingNewFlower = 200;
++                    Bee.this.remainingCooldownBeforeLocatingNewFlower = beeCfg.cooldownBeforeLocatingNewFlower; // TenseiMC
+                 } else if (Bee.this.savedFlowerPos != null) { // Paper - add null check since API can manipulate this
+                     Vec3 flowerPos = Vec3.atBottomCenterOf(Bee.this.savedFlowerPos).add(0.0, 0.6F, 0.0);
+                     if (flowerPos.distanceTo(Bee.this.position()) > 1.0) {
+@@ -1251,7 +1264,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+                         boolean arrivedAtHoverPos = Bee.this.position().distanceTo(this.hoverPos) <= 0.1;
+                         boolean shouldSetWantedPos = true;
+-                        if (!arrivedAtHoverPos && this.pollinatingTicks > 600) {
++                        if (!arrivedAtHoverPos && this.pollinatingTicks > beeCfg.maxPollinationTicks) { // TenseiMC
+                             Bee.this.dropFlower();
+                         } else {
+                             if (arrivedAtHoverPos) {
+@@ -1290,7 +1303,8 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+         }
+ 
+         private Optional<BlockPos> findNearbyFlower() {
+-            Iterable<BlockPos> closestNearbyFlowers = BlockPos.withinManhattan(Bee.this.blockPosition(), 5, 5, 5);
++            int radius = Bee.this.level().tensei.mobsConfig.beeConfig.flowerSearchRadius; // TenseiMC
++            Iterable<BlockPos> closestNearbyFlowers = BlockPos.withinManhattan(Bee.this.blockPosition(), radius, radius, radius); // TenseiMC
+             Long2LongOpenHashMap tempCache = new Long2LongOpenHashMap();
+ 
+             for (BlockPos pos : closestNearbyFlowers) {
+@@ -1355,7 +1369,7 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {
+ 
+         private int getWanderThreshold() {
+             int distanceReduction = !Bee.this.hasHive() && !Bee.this.hasSavedFlowerPos() ? 16 : 24;
+-            return 48 - distanceReduction;
++            return Bee.this.level().tensei.mobsConfig.beeConfig.tooFarDistance - distanceReduction; // TenseiMC
+         }
+     }
+ 

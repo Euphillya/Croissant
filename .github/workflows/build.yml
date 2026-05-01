@@ -40,7 +40,7 @@ jobs:
             This release is automatically compiled by GitHub Actions
             ### Commit Message
             ${{ env.commit_msg }}
-          artifacts: croissant-server/build/libs/*.jar
+          artifacts: tensei-server/build/libs/*.jar
           generateReleaseNotes: true
           prerelease: ${{ github.ref_name == 'master' }}
           makeLatest: ${{ github.ref_name != 'master' }}
@@ -49,7 +49,7 @@ jobs:
 
 env:
   tag: build-${{ github.ref_name }}-${{ github.run_number }}
-  project_id_b: Croissant
+  project_id_b: TenseiMC
   commit_id: ${{ github.sha }}
   commit_msg: ${{ github.event.head_commit.message }}
   pre: false
