@@ -5,7 +5,7 @@ Subject: [PATCH] Bee config
 
 
 diff --git a/net/minecraft/world/entity/animal/bee/Bee.java b/net/minecraft/world/entity/animal/bee/Bee.java
-index 3dfe5f49dacce42b5f36c290a9354823135170bb..c6ac4da09d2f3b63ee013eaa6f8f8ba7c1c869ae 100644
+index 3dfe5f49dacce42b5f36c290a9354823135170bb..d4c3fb3e250ea9f49f09b0e56861d2b04114054f 100644
 --- a/net/minecraft/world/entity/animal/bee/Bee.java
 +++ b/net/minecraft/world/entity/animal/bee/Bee.java
 @@ -257,11 +257,12 @@ public class Bee extends Animal implements FlyingAnimal, NeutralMob {

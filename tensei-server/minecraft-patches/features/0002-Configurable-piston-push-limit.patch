@@ -5,7 +5,7 @@ Subject: [PATCH] Configurable piston push limit
 
 
 diff --git a/net/minecraft/world/level/block/piston/PistonStructureResolver.java b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
-index 4881cf351f673a38905aebb660fcdb218d69158d..37fe4f61c0e11f6e941680b9ef23fca10a9f8fdc 100644
+index 4881cf351f673a38905aebb660fcdb218d69158d..7bd93d0d67183b1f6130628dd92e1bc45b0d13b4 100644
 --- a/net/minecraft/world/level/block/piston/PistonStructureResolver.java
 +++ b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
 @@ -81,7 +81,7 @@ public class PistonStructureResolver {

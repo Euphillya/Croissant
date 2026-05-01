@@ -5,7 +5,7 @@ Subject: [PATCH] Beacon Activation Range Configurable
 
 
 diff --git a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
-index 54f29e7cbe425d2b7fb7dd967b637bb7b4b1ba52..d79a30d2df6425c4b5869ec7c8955adbc31a83dd 100644
+index 54f29e7cbe425d2b7fb7dd967b637bb7b4b1ba52..77941a36a9da4c2d48616a972507e33570be173e 100644
 --- a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
 @@ -142,6 +142,15 @@ public class BeaconBlockEntity extends BlockEntity implements MenuProvider, Name
