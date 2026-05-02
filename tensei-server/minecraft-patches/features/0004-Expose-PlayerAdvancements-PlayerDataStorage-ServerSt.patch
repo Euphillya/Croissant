@@ -92,7 +92,7 @@ index 658db8460122db271bbc3c2c0844574b8d75f044..d78d041847ac5e770a1eb9bccecf7bef
              .xmap(PlayerAdvancements.Data::new, PlayerAdvancements.Data::map);
  
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 5c97fdb66d0e78c03cacc922159b4e5f97bd946f..033fd40beefe89599bcd68b91ea44d561f6774af 100644
+index 04e99d0317833c863da027f2ba130c646961a995..b538bbf0301eaec42fe220109c7928c2fe1f435d 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -542,6 +542,10 @@ public abstract class PlayerList {

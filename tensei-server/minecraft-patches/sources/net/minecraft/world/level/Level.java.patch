@@ -14,7 +14,7 @@
          org.bukkit.World.Environment environment, // Paper
          java.util.function.Function<org.spigotmc.SpigotWorldConfig, // Spigot - create per world config
          io.papermc.paper.configuration.WorldConfiguration> paperWorldConfigCreator, // Paper - create paper world config
-+        java.util.function.Function<org.spigotmc.SpigotWorldConfig, fr.euphyllia.tensei.configuration.TenseiConfigWorld> tenseiWorldConfigCreator,
++        java.util.function.Function<org.spigotmc.SpigotWorldConfig, fr.euphyllia.tenseimc.configuration.TenseiConfigWorld> tenseiWorldConfigCreator,
          java.util.concurrent.Executor executor // Paper - Anti-Xray
      ) {
          // Paper start - getblock optimisations - cache world height/sections

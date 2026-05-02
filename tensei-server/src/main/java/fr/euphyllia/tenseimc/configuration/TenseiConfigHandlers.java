@@ -38,9 +38,10 @@ public class TenseiConfigHandlers extends Configurations<TenseiConfigGlobal, Ten
     static final String GLOBAL = "tensei-global.yml";
     static final String DEFAULT_WORLD = "tensei-world.yml";
     public static final ComponentLogger LOGGER = ComponentLogger.logger("TenseiConfigHandlers");
+    static final String WORLD = "tensei-world.yml";
 
     public TenseiConfigHandlers(Path configDir) {
-        super(configDir, TenseiConfigGlobal.class, TenseiConfigWorld.class, GLOBAL, DEFAULT_WORLD, "tensei-world.yml");
+        super(configDir, TenseiConfigGlobal.class, TenseiConfigWorld.class, GLOBAL, DEFAULT_WORLD, WORLD);
     }
 
     public static TenseiConfigHandlers setup(final Path configDir) throws IOException {
@@ -61,14 +62,7 @@ public class TenseiConfigHandlers extends Configurations<TenseiConfigGlobal, Ten
     }
 
     private static ContextMap createWorldContextMap(ServerLevel level) {
-        return createWorldContextMap(
-                level.serverLevelData.getLevelName(),
-                level.dimension().identifier(),
-                level.levelStorageAccess.levelDirectory.path(),
-                level.spigotConfig,
-                level.registryAccess(),
-                level.getGameRules()
-        );
+        return createWorldContextMap(level.getServer().storageSource.getDimensionPath(level.dimension()), level.dimension().identifier(), level.spigotConfig, level.registryAccess(), level.getGameRules());
     }
 
     @Override
@@ -94,8 +88,9 @@ public class TenseiConfigHandlers extends Configurations<TenseiConfigGlobal, Ten
     }
 
     private Path worldFilePath(ContextMap map) {
-        String worldName = map.require(WORLD_NAME);
-        String safe = worldName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        Identifier worldKey = map.require(WORLD_KEY);
+        String raw = worldKey.getNamespace() + "_" + worldKey.getPath();
+        String safe = raw.replaceAll("[^a-zA-Z0-9._-]", "_");
         return this.globalFolder.resolve("tensei-world-" + safe + ".yml");
     }
 

@@ -3,7 +3,7 @@ name: Patch and Build
 on:
   push:
     branches:
-      - master
+      - ver/26.1.x
 
 permissions: write-all
 jobs:
@@ -28,7 +28,7 @@ jobs:
       - name: Apply Patches
         run: ./gradlew applyAllPatches --refresh-dependencies --stacktrace
       - name: Build
-        run: ./gradlew clean --refresh-dependencies createMojmapPaperclipJar
+        run: ./gradlew createPaperclipJar --refresh-dependencies --stacktrace
 
       - name: Create Release
         if: github.event_name != 'pull_request'
@@ -40,7 +40,7 @@ jobs:
             This release is automatically compiled by GitHub Actions
             ### Commit Message
             ${{ env.commit_msg }}
-          artifacts: tensei-server/build/libs/*.jar
+          artifacts: tensei-server/build/libs/tensei-paperclip-*.jar
           generateReleaseNotes: true
           prerelease: ${{ github.ref_name == 'master' }}
           makeLatest: ${{ github.ref_name != 'master' }}
