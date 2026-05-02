@@ -19,3 +19,15 @@ for (name in listOf("tensei-api", "tensei-server")) {
     include(projName)
     findProject(":$projName")!!.projectDir = file(name)
 }
+
+gradle.lifecycle.beforeProject {
+    val mcVersion = providers.gradleProperty("mcVersion").get().trim()
+    val tenseiChannel = providers.gradleProperty("channel").get().trim()
+    val tenseiBuildNumber = providers.environmentVariable("BUILD_NUMBER").orNull?.trim()?.toInt()
+    val versionString = if (tenseiBuildNumber == null) {
+        "$mcVersion.local-SNAPSHOT"
+    } else {
+        "$mcVersion.build.$tenseiBuildNumber-${tenseiChannel.lowercase()}"
+    }
+    version = versionString
+}
