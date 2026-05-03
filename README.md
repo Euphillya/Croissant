@@ -2,8 +2,8 @@
 
 # TenseiMC
 
-[![MIT License](https://img.shields.io/github/license/DoctaEnkoda/TenseiMC?&logo=github)](LICENCE)
-![Build TenseiMC](https://github.com/DoctaEnkoda/TenseiMC/actions/workflows/build.yml/badge.svg)
+[![MIT License](https://img.shields.io/github/license/Euphillya/TenseiMC?&logo=github)](LICENCE)
+![Build TenseiMC](https://github.com/Euphillya/TenseiMC/actions/workflows/build.yml/badge.svg)
 [![Join us on Discord](https://discord.com/api/guilds/1196471429936463943/widget.png?style=shield)](https://discord.gg/yhPGeax66t)
 [![](https://img.shields.io/bstats/servers/19185?label=bStats)](https://bstats.org/plugin/server-implementation/TenseiMC/19185)
 
