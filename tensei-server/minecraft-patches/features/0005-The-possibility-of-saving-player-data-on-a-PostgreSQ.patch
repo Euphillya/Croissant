@@ -1,0 +1,208 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Tue, 5 May 2026 15:02:08 +0200
+Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
+ allows for a kind of inter-server synchronization.
+
+
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 8b8b1393f26b5c5b387b5b1b3fb5ec4e4212fce2..24a769a59cdd76bbea55d8fb87bad5fdb9999dcd 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     public static final Supplier<GameRules> DEFAULT_GAME_RULES = () -> new GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures());
+     public static final NameAndId ANONYMOUS_PLAYER_PROFILE = new NameAndId(Util.NIL_UUID, "Anonymous Player");
+     public LevelStorageSource.LevelStorageAccess storageSource;
+-    public final PlayerDataStorage playerDataStorage;
++    public PlayerDataStorage playerDataStorage; // TenseiMC - non-final to allow Postgres swap
+     private final SavedDataStorage savedDataStorage;
+     private final List<Runnable> tickables = Lists.newArrayList();
+     // Paper - per-level GameRules
+@@ -1156,6 +1156,14 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+         this.savedDataStorage.close();
+         this.resources.close();
+ 
++        // TenseiMC start - shutdown Postgres storage
++        try {
++            fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.shutdown();
++        } catch (Exception ex) {
++            LOGGER.error("Failed to shutdown TenseiMC storage", ex);
++        }
++        // TenseiMC end
++
+         try {
+             this.storageSource.close();
+         } catch (IOException var4) {
+@@ -1333,6 +1341,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             if (!this.initServer()) {
+                 throw new IllegalStateException("Failed to initialize server");
+             }
++            // TenseiMC start - initialize Postgres storage
++            try {
++                fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.init(
++                        fr.euphyllia.tenseimc.storage.config.StorageConfigMapper.toStorageConfig(
++                                fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().storage
++                        ),
++                        this,
++                        this.getServerDirectory()
++                );
++
++                if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++                    var pgStorage =
++                            new fr.euphyllia.tenseimc.storage.extension.postgresql.PostgresPlayerDataStorage(
++                                    this.storageSource,
++                                    this.fixerUpper
++                            );
++                    this.playerDataStorage = pgStorage;
++                    this.getPlayerList().playerIo = pgStorage;
++                    LOGGER.info("PlayerDataStorage swapped to PostgresPlayerDataStorage");
++                }
++            } catch (Exception ex) {
++                LOGGER.error("Failed to initialize TenseiMC storage", ex);
++                throw new IllegalStateException("Storage initialization failed", ex);
++            }
++            // TenseiMC end
+ 
+             this.nextTickTimeNanos = Util.getNanos();
+             this.initTickSchedule(); // Paper - improve tick loop
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa57fbd6b2 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -124,7 +124,7 @@ public abstract class PlayerList {
+     // private final Map<UUID, ServerStatsCounter> stats = Maps.newHashMap();
+     // private final Map<UUID, PlayerAdvancements> advancements = Maps.newHashMap();
+     // CraftBukkit end
+-    public final PlayerDataStorage playerIo;
++    public PlayerDataStorage playerIo; // TenseiMC - non-final to allow Postgres swap
+     private final LayeredRegistryAccess<RegistryLayer> registries;
+     private int viewDistance;
+     private int simulationDistance;
+@@ -225,6 +225,39 @@ public abstract class PlayerList {
+     public void placeNewPlayer(final Connection connection, final ServerPlayer player, final CommonListenerCookie cookie) {
+         player.isRealPlayer = true; // Paper
+         player.loginTime = System.currentTimeMillis(); // Paper - Replace OfflinePlayer#getLastPlayed
++
++        // TenseiMC start - acquire session lock
++        if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++            final UUID lockUuid = player.getUUID();
++            try {
++                boolean acquired = fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.playerLock()
++                        .tryAcquire(lockUuid)
++                        .get(2, java.util.concurrent.TimeUnit.SECONDS);
++
++                if (!acquired) {
++                    String msg = fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.config()
++                            .resilience().login().alreadyConnectedKickMessage();
++                    connection.disconnect(io.papermc.paper.adventure.PaperAdventure.asVanilla(
++                            net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(msg)
++                    ));
++                    return;
++                }
++                fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.lockHeartbeat().track(lockUuid);
++            } catch (java.util.concurrent.TimeoutException | java.util.concurrent.ExecutionException ex) {
++                LOGGER.error("Failed to acquire session lock for {}", lockUuid, ex);
++                String msg = fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.config()
++                        .resilience().login().unavailableKickMessage();
++                connection.disconnect(io.papermc.paper.adventure.PaperAdventure.asVanilla(
++                        net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(msg)
++                ));
++                return;
++            } catch (InterruptedException ex) {
++                Thread.currentThread().interrupt();
++                return;
++            }
++        }
++        // TenseiMC end
++
+         NameAndId gameProfile = player.nameAndId();
+         UserNameToIdResolver profileCache = this.server.services().nameToIdCache();
+         Optional<NameAndId> oldProfile = profileCache.get(gameProfile.id());
+@@ -504,6 +537,29 @@ public abstract class PlayerList {
+         new io.canvasmc.canvas.event.PlayerSaveEvent(player.getBukkitEntity(), false).callEvent(); // Canvas - player save event
+     }
+ 
++    // TenseiMC start - explicit logout save with proper SaveOperation context
++    public void saveOnLogout(final ServerPlayer player) {
++        if (!player.getBukkitEntity().isPersistent()) return;
++        player.lastSave = System.nanoTime();
++
++        if (this.playerIo instanceof fr.euphyllia.tenseimc.storage.extension.postgresql.PostgresPlayerDataStorage pgStorage) {
++            pgStorage.saveWithOperation(player, fr.euphyllia.tenseimc.storage.model.SaveOperation.LOGOUT);
++        } else {
++            this.playerIo.save(player);
++        }
++
++        ServerStatsCounter stats = player.getStats();
++        if (stats != null) {
++            stats.save();
++        }
++        PlayerAdvancements advancements = player.getAdvancements();
++        if (advancements != null) {
++            advancements.save();
++        }
++        new io.canvasmc.canvas.event.PlayerSaveEvent(player.getBukkitEntity(), false).callEvent();
++    }
++// TenseiMC end
++
+     public net.kyori.adventure.text.@Nullable Component remove(final ServerPlayer player) { // CraftBukkit - return string // Paper - return Component
+         // Paper start - Fix kick event leave message not being sent
+         return this.remove(player, net.kyori.adventure.text.Component.translatable("multiplayer.player.left", net.kyori.adventure.text.format.NamedTextColor.YELLOW, io.papermc.paper.configuration.GlobalConfiguration.get().messages.useDisplayNameInQuitMessage ? player.getBukkitEntity().displayName() : io.papermc.paper.adventure.PaperAdventure.asAdventure(player.getDisplayName())));
+@@ -541,11 +597,15 @@ public abstract class PlayerList {
+             player.drop(carried, false);
+         }
+         // Paper end - Drop carried item when player has disconnected
+-        this.save(player);
+-        // TenseiMC start - force save stats + advancements disconnect
+-        player.getStats().save();
+-        player.getAdvancements().save();
+-        // TenseiMC end - force save stats + advancements disconnect
++        // TenseiMC start - save with LOGOUT context + release session lock
++        this.saveOnLogout(player);
++
++        if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++            final UUID lockUuid = player.getUUID();
++            fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.lockHeartbeat().untrack(lockUuid);
++            fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.playerLock().release(lockUuid);
++        }
++        // TenseiMC end
+         if (player.isPassenger()) {
+             Entity vehicle = player.getRootVehicle();
+             if (vehicle.hasExactlyOnePlayerPassenger()) {
+@@ -1367,6 +1427,16 @@ public abstract class PlayerList {
+         }
+     }
+     public ServerStatsCounter getPlayerStats(final GameProfile gameProfile) {
++        // TenseiMC start - Postgres-backed stats
++        if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++            return new fr.euphyllia.tenseimc.storage.extension.postgresql.PostgresServerStatsCounter(
++                    this.server,
++                    gameProfile.id(),
++                    gameProfile.name(),
++                    this.server.getFixerUpper()
++            );
++        }
++        // TenseiMC end
+             Path targetFile = this.locateStatsFile(gameProfile);
+             return new ServerStatsCounter(this.server, targetFile);
+     }
+@@ -1398,11 +1468,17 @@ public abstract class PlayerList {
+     public PlayerAdvancements getPlayerAdvancements(final ServerPlayer player) {
+         UUID uuid = player.getUUID();
+         PlayerAdvancements result = player.getAdvancements(); // CraftBukkit
+-        if (result == null) {
++        // TenseiMC start - Postgres-backed advancements
++        if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++            result = new fr.euphyllia.tenseimc.storage.extension.postgresql.PostgresPlayerAdvancements(
++                    this.server.getFixerUpper(), this, this.server.getAdvancements(), player
++            );
++        } else {
+             Path uuidStatsFile = this.server.getWorldPath(LevelResource.PLAYER_ADVANCEMENTS_DIR).resolve(uuid + ".json");
+             result = new PlayerAdvancements(this.server.getFixerUpper(), this, this.server.getAdvancements(), uuidStatsFile, player);
+-            // this.advancements.put(uuid, result); // CraftBukkit
+         }
++        // TenseiMC end
++        // this.advancements.put(uuid, result); // CraftBukkit
+ 
+         result.setPlayer(player);
+         return result;

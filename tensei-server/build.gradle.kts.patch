@@ -68,6 +68,17 @@
      implementation("ca.spottedleaf:concurrentutil:0.0.10")
      implementation("org.jline:jline-terminal-ffm:3.29.0") // use ffm on java 22+
      implementation("org.jline:jline-terminal-jni:3.29.0") // fall back to jni on java 21
+@@ -212,6 +_,10 @@
+     // Spark
+     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
+     implementation("me.lucko:spark-paper:1.10.152")
++
++    // Storage
++    implementation("org.postgresql:postgresql:42.7.10")
++    implementation("com.zaxxer:HikariCP:7.0.2")
+ }
+ 
+ tasks.jar {
 @@ -226,14 +_,14 @@
          val gitBranch = git.exec(providers, "rev-parse", "--abbrev-ref", "HEAD").get().trim()
          attributes(
