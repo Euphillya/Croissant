@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Tue, 5 May 2026 23:55:40 +0200
+Subject: [PATCH] Chest Config
+
+
+diff --git a/net/minecraft/world/level/block/ChestBlock.java b/net/minecraft/world/level/block/ChestBlock.java
+index d8637635282eaf18a09d9d62ef38298239ea1d82..303418bf860997d022864bccf38ab1dce9c17d31 100644
+--- a/net/minecraft/world/level/block/ChestBlock.java
++++ b/net/minecraft/world/level/block/ChestBlock.java
+@@ -258,7 +258,7 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+             type = this.getChestType(context.getLevel(), context.getClickedPos(), facingDirection);
+         }
+ 
+-        return this.defaultBlockState().setValue(FACING, facingDirection).setValue(TYPE, type).setValue(WATERLOGGED, replacedFluidState.is(Fluids.WATER));
++        return this.defaultBlockState().setValue(FACING, facingDirection).setValue(TYPE, type).setValue(WATERLOGGED, context.getLevel().tensei.blocks.chest.allowWaterlogging && replacedFluidState.is(Fluids.WATER)); // Tensei - allowWaterlogging
+     }
+ 
+     protected ChestType getChestType(final Level level, final BlockPos pos, final Direction facingDirection) {
+@@ -384,6 +384,12 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+     }
+ 
+     public static boolean isBlockedChestByBlock(final BlockGetter level, final BlockPos pos) {
++        // Tensei start - openWithBlockAbove
++        if (level instanceof LevelAccessor levelAccessor
++                && levelAccessor.getMinecraftWorld().tensei.blocks.chest.openWithBlockAbove) {
++            return false;
++        }
++        // Tensei end - openWithBlockAbove
+         BlockPos above = pos.above();
+         return level.getBlockState(above).isRedstoneConductor(level, above);
+     }
+@@ -413,6 +419,11 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+ 
+     @Override
+     protected int getAnalogOutputSignal(final BlockState state, final Level level, final BlockPos pos, final Direction direction) {
++        // Tensei start - comparatorOutputEnabled
++        if (!level.tensei.blocks.chest.comparatorOutputEnabled) {
++            return 0;
++        }
++        // Tensei end - comparatorOutputEnabled
+         return AbstractContainerMenu.getRedstoneSignalFromContainer(getContainer(this, state, level, pos, false));
+     }
+ 

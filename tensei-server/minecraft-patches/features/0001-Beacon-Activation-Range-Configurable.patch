@@ -5,7 +5,7 @@ Subject: [PATCH] Beacon Activation Range Configurable
 
 
 diff --git a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
-index 54f29e7cbe425d2b7fb7dd967b637bb7b4b1ba52..77941a36a9da4c2d48616a972507e33570be173e 100644
+index 54f29e7cbe425d2b7fb7dd967b637bb7b4b1ba52..48722d13af7b882d8897b1d1812dd75540582c79 100644
 --- a/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/BeaconBlockEntity.java
 @@ -142,6 +142,15 @@ public class BeaconBlockEntity extends BlockEntity implements MenuProvider, Name
@@ -14,10 +14,10 @@ index 54f29e7cbe425d2b7fb7dd967b637bb7b4b1ba52..77941a36a9da4c2d48616a972507e335
          if (this.effectRange < 0) {
 +            if (this.getLevel() != null) {
 +                return switch (this.levels) {
-+                    case 1 -> this.getLevel().tensei.beaconConfig.levelOne;
-+                    case 2 -> this.getLevel().tensei.beaconConfig.levelTwo;
-+                    case 3 -> this.getLevel().tensei.beaconConfig.levelThree;
-+                    case 4 -> this.getLevel().tensei.beaconConfig.levelFour;
++                    case 1 -> this.getLevel().tensei.blocks.beacon.levelOne;
++                    case 2 -> this.getLevel().tensei.blocks.beacon.levelTwo;
++                    case 3 -> this.getLevel().tensei.blocks.beacon.levelThree;
++                    case 4 -> this.getLevel().tensei.blocks.beacon.levelFour;
 +                    default -> this.levels * 10 + 10;
 +                };
 +            }

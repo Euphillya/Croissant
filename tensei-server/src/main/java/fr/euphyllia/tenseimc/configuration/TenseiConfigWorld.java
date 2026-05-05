@@ -13,24 +13,10 @@ public class TenseiConfigWorld extends ConfigurationPart {
     @Setting(Configuration.VERSION_FIELD)
     public int version = CURRENT_VERSION;
 
-
-    public BeaconConfig beaconConfig;
-    public class BeaconConfig extends ConfigurationPart {
-        public int levelOne = 20;
-        public int levelTwo = 30;
-        public int levelThree = 40;
-        public int levelFour = 50;
-    }
-
-    public PistonConfig pistonConfig;
-    public class PistonConfig extends ConfigurationPart {
-        public int pushLimit = 12;
-    }
-
-    public MobsConfig mobsConfig;
-    public class MobsConfig extends ConfigurationPart {
-        public BeeConfig beeConfig;
-        public class BeeConfig extends ConfigurationPart {
+    public Mobs mobs;
+    public class Mobs extends ConfigurationPart {
+        public Bee bee;
+        public class Bee extends ConfigurationPart {
             @Comment("Allow bees to leave their hive and work at night.")
             public boolean workAtNight = false;
 
@@ -120,15 +106,31 @@ public class TenseiConfigWorld extends ConfigurationPart {
         }
     }
 
-    public ChestSettingsConfig chestSettingsConfig;
-    public class ChestSettingsConfig extends ConfigurationPart {
-        @Comment("Allow opening chests even when a solid block is above them.")
-        public boolean openWithBlockAbove = false;
+    public Blocks blocks;
+    public class Blocks extends ConfigurationPart {
+        public Beacon beacon;
+        public class Beacon extends ConfigurationPart {
+            public int levelOne = 20;
+            public int levelTwo = 30;
+            public int levelThree = 40;
+            public int levelFour = 50;
+        }
 
-        @Comment("Allow chests to output a comparator signal based on their contents.")
-        public boolean comparatorOutputEnabled = true;
+        public Piston piston;
+        public class Piston extends ConfigurationPart {
+            public int pushLimit = 12;
+        }
 
-        @Comment("Allow chests to be waterlogged.")
-        public boolean allowWaterlogging = true;
+        public Chest chest;
+        public class Chest extends ConfigurationPart {
+            @Comment("Allow opening chests even when a solid block is above them.")
+            public boolean openWithBlockAbove = false;
+
+            @Comment("Allow chests to output a comparator signal based on their contents.")
+            public boolean comparatorOutputEnabled = true;
+
+            @Comment("Allow chests to be waterlogged.")
+            public boolean allowWaterlogging = true;
+        }
     }
 }
