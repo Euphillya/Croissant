@@ -117,7 +117,18 @@ public class TenseiConfigWorld extends ConfigurationPart {
 
             @Comment("Ticks a bee can stay underwater before taking drowning damage.\nDefault: 20 (1 second)")
             public int underWaterTicksBeforeDamage = 20;
-
         }
+    }
+
+    public ChestSettingsConfig chestSettingsConfig;
+    public class ChestSettingsConfig extends ConfigurationPart {
+        @Comment("Allow opening chests even when a solid block is above them.")
+        public boolean openWithBlockAbove = false;
+
+        @Comment("Allow chests to output a comparator signal based on their contents.")
+        public boolean comparatorOutputEnabled = true;
+
+        @Comment("Allow chests to be waterlogged.")
+        public boolean allowWaterlogging = true;
     }
 }

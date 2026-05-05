@@ -20,7 +20,9 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,6 +43,7 @@ public class PostgresManager {
     private static volatile PostgresHealthCheck healthCheck;
     private static volatile PostgresLockHeartbeat lockHeartbeat;
     private static final AtomicReference<StorageHealth> health = new AtomicReference<>(StorageHealth.HEALTHY);
+    private static final AtomicInteger pendingSaves = new AtomicInteger(0);
 
     private PostgresManager() {
     }
@@ -89,7 +92,7 @@ public class PostgresManager {
         try {
             new PostgresSchemaInitializer(schema).init();
         } catch (final Exception ex) {
-            shutdownInternal();
+            shutdownInternal(false);
             enabled = false;
             throw new SQLException("Failed to initialize Postgres schema", ex);
         }
@@ -103,7 +106,7 @@ public class PostgresManager {
             lockHeartbeat = new PostgresLockHeartbeat();
             lockHeartbeat.start();
         } catch (final Exception ex) {
-            shutdownInternal();
+            shutdownInternal(false);
             enabled = false;
             throw new SQLException("Failed to initialize Postgres dependent services", ex);
         }
@@ -176,14 +179,40 @@ public class PostgresManager {
         }
     }
 
+    public static int pendingSavesCount() {
+        return pendingSaves.get();
+    }
+
+
+    public static boolean submitSave(final Runnable task) {
+        final ExecutorService executor = ioExecutor;
+        if (executor == null || executor.isShutdown()) {
+            return false;
+        }
+        pendingSaves.incrementAndGet();
+        try {
+            executor.execute(() -> {
+                try {
+                    task.run();
+                } finally {
+                    pendingSaves.decrementAndGet();
+                }
+            });
+            return true;
+        } catch (final RejectedExecutionException ex) {
+            pendingSaves.decrementAndGet();
+            return false;
+        }
+    }
+
     public static synchronized void shutdown() {
         if (!enabled) return;
         LOGGER.info("Shutting down PostgresManager");
-        shutdownInternal();
+        shutdownInternal(true);
         enabled = false;
     }
 
-    private static void shutdownInternal() {
+    private static void shutdownInternal(final boolean drainPendingSaves) {
         if (lockHeartbeat != null) {
             lockHeartbeat.close();
             lockHeartbeat = null;
@@ -194,6 +223,9 @@ public class PostgresManager {
         }
         if (ioExecutor != null) {
             ioExecutor.shutdown();
+            if (drainPendingSaves) {
+                drainWithProgress();
+            }
             ioExecutor = null;
         }
         if (loginDataSource != null) {
@@ -203,6 +235,78 @@ public class PostgresManager {
         if (saveDataSource != null) {
             saveDataSource.close();
             saveDataSource = null;
+        }
+    }
+
+
+    private static void drainWithProgress() {
+        final int totalAtStart = pendingSaves.get();
+        final long timeoutMs = config != null
+                ? config.resilience().shutdown().flushTimeoutMs()
+                : 30_000L;
+        final long startNanos = System.nanoTime();
+        final long deadlineNanos = startNanos + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+
+        if (totalAtStart == 0) {
+            LOGGER.info("No pending saves, shutdown ready");
+            return;
+        }
+
+        LOGGER.info("Draining {} pending saves (timeout: {}ms)", totalAtStart, timeoutMs);
+
+        final long pollChunkMs = 500;
+
+        int nextThreshold = (int) Math.ceil(totalAtStart * 0.9);
+        final int step = Math.max(1, totalAtStart / 10);
+
+        long lastProgressNanos = startNanos;
+        int lastPending = totalAtStart;
+
+        try {
+            while (true) {
+                final long remainingNanos = deadlineNanos - System.nanoTime();
+                if (remainingNanos <= 0) {
+                    final int pending = pendingSaves.get();
+                    LOGGER.error("Drain timeout ({}ms) reached - forcing shutdown, {} saves lost",
+                            timeoutMs, pending);
+                    ioExecutor.shutdownNow();
+                    return;
+                }
+
+                final long waitMs = Math.min(pollChunkMs, TimeUnit.NANOSECONDS.toMillis(remainingNanos));
+                final boolean terminated = ioExecutor.awaitTermination(waitMs, TimeUnit.MILLISECONDS);
+
+                final int pending = pendingSaves.get();
+                final int done = totalAtStart - pending;
+
+                if (terminated || pending == 0) {
+                    final long elapsed = (System.nanoTime() - startNanos) / 1_000_000;
+                    LOGGER.info("All {} saves flushed in {}ms", totalAtStart, elapsed);
+                    return;
+                }
+
+                if (pending <= nextThreshold) {
+                    final long elapsed = (System.nanoTime() - startNanos) / 1_000_000;
+                    final int percent = (done * 100) / totalAtStart;
+                    LOGGER.info("Drain progress: {}/{} ({}%) - {}ms elapsed",
+                            done, totalAtStart, percent, elapsed);
+                    nextThreshold -= step;
+                }
+
+                if (pending != lastPending) {
+                    lastPending = pending;
+                    lastProgressNanos = System.nanoTime();
+                } else if (System.nanoTime() - lastProgressNanos > TimeUnit.SECONDS.toNanos(30)) {
+                    LOGGER.warn("Drain stalled at {}/{} for 30s - Postgres may be unresponsive",
+                            done, totalAtStart);
+                    lastProgressNanos = System.nanoTime();
+                }
+            }
+        } catch (final InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            final int pending = pendingSaves.get();
+            LOGGER.warn("Interrupted during drain - forcing shutdown, {} saves lost", pending);
+            ioExecutor.shutdownNow();
         }
     }
 

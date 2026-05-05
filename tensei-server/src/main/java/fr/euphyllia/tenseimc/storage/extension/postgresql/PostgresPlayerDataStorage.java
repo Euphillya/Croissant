@@ -57,7 +57,7 @@ public class PostgresPlayerDataStorage extends PlayerDataStorage {
 
         final boolean useGzip = PostgresManager.config().postgres().useGzip();
 
-        PostgresManager.ioExecutor().execute(() -> {
+        PostgresManager.submitSave(() -> {
             try {
                 PostgresPlayerDataAccess.save(uuid, name, snapshot, useGzip);
             } catch (final StorageException ex) {

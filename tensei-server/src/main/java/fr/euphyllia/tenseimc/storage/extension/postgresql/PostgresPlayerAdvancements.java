@@ -72,7 +72,7 @@ public class PostgresPlayerAdvancements extends PlayerAdvancements {
             return;
         }
 
-        PostgresManager.ioExecutor().execute(() -> {
+        PostgresManager.submitSave(() -> {
             try {
                 PostgresAdvancementsAccess.save(uuid, json);
             } catch (final StorageException ex) {

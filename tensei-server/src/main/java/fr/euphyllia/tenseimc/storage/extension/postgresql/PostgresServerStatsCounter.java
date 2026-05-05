@@ -69,7 +69,7 @@ public class PostgresServerStatsCounter extends ServerStatsCounter {
             return;
         }
 
-        PostgresManager.ioExecutor().execute(() -> {
+        PostgresManager.submitSave(() -> {
             try {
                 PostgresStatsAccess.save(uuid, json);
             } catch (final StorageException ex) {
