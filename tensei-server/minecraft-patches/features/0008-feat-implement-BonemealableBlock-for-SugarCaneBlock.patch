@@ -1,11 +1,11 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
 Date: Wed, 6 May 2026 22:22:13 +0200
-Subject: [PATCH] feat: implement BonemealableBlock for SugarCaneBlock
+Subject: [PATCH] feat: Implement BonemealableBlock for SugarCaneBlock
 
 
 diff --git a/net/minecraft/world/level/block/SugarCaneBlock.java b/net/minecraft/world/level/block/SugarCaneBlock.java
-index 8964d69bb1baeefafefb1350f7622eb653697490..e250e3fb500458630a1259e06e59c6d860a64fc1 100644
+index 8964d69bb1baeefafefb1350f7622eb653697490..f2423f62f60cd9ec7fb276b776df4319cfa9c9f0 100644
 --- a/net/minecraft/world/level/block/SugarCaneBlock.java
 +++ b/net/minecraft/world/level/block/SugarCaneBlock.java
 @@ -19,7 +19,7 @@ import net.minecraft.world.level.material.FluidState;
@@ -17,7 +17,7 @@ index 8964d69bb1baeefafefb1350f7622eb653697490..e250e3fb500458630a1259e06e59c6d8
      public static final MapCodec<SugarCaneBlock> CODEC = simpleCodec(SugarCaneBlock::new);
      public static final IntegerProperty AGE = BlockStateProperties.AGE_15;
      private static final VoxelShape SHAPE = Block.column(12.0, 0.0, 16.0);
-@@ -112,4 +112,35 @@ public class SugarCaneBlock extends Block {
+@@ -112,4 +112,54 @@ public class SugarCaneBlock extends Block {
      protected void createBlockStateDefinition(final StateDefinition.Builder<Block, BlockState> builder) {
          builder.add(AGE);
      }
@@ -28,15 +28,24 @@ index 8964d69bb1baeefafefb1350f7622eb653697490..e250e3fb500458630a1259e06e59c6d8
 +                && !serverLevel.tensei.blocks.sugarCane.bonemealEnabled) {
 +            return false;
 +        }
++
++        BlockPos topPos = pos;
++        if (level instanceof ServerLevel serverLevel && serverLevel.tensei.blocks.sugarCane.bonemealTargetTop) {
++            while (level.getBlockState(topPos.above()).is(this)) {
++                topPos = topPos.above();
++            }
++        }
++
 +        int height = 1;
-+        while (level.getBlockState(pos.below(height)).is(this)) {
++        while (level.getBlockState(topPos.below(height)).is(this)) {
 +            height++;
 +        }
++
 +        if (level instanceof ServerLevel serverLevel) {
-+            return level.isEmptyBlock(pos.above())
++            return level.isEmptyBlock(topPos.above())
 +                    && height < serverLevel.paperConfig().maxGrowthHeight.reeds;
 +        }
-+        return level.isEmptyBlock(pos.above()) && height < 3;
++        return level.isEmptyBlock(topPos.above()) && height < 3;
 +    }
 +
 +    @Override
@@ -49,7 +58,17 @@ index 8964d69bb1baeefafefb1350f7622eb653697490..e250e3fb500458630a1259e06e59c6d8
 +
 +    @Override
 +    public void performBonemeal(final ServerLevel level, final RandomSource random, final BlockPos pos, final BlockState state) {
-+        org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockGrowEvent(level, pos.above(), this.defaultBlockState(), Block.UPDATE_ALL);
-+        level.setBlock(pos, state.setValue(AGE, 0), Block.UPDATE_NONE);
++        BlockPos topPos = pos;
++        if (level.tensei.blocks.sugarCane.bonemealTargetTop) {
++            while (level.getBlockState(topPos.above()).is(this)) {
++                topPos = topPos.above();
++            }
++        }
++        org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockGrowEvent(level, topPos.above(), this.defaultBlockState(), Block.UPDATE_ALL);
++        level.setBlock(topPos, level.getBlockState(topPos).setValue(AGE, 0), Block.UPDATE_NONE);
++
++        if (level.tensei.blocks.sugarCane.bonemealParticles) {
++            level.levelEvent(net.minecraft.world.level.block.LevelEvent.PARTICLES_AND_SOUND_PLANT_GROWTH, topPos, 0);
++        }
 +    }
  }

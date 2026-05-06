@@ -162,6 +162,12 @@ public class TenseiConfigWorld extends ConfigurationPart {
 
             @Comment("Probability (0.0 - 1.0) that bonemeal successfully grows the sugar cane by one block.")
             public float bonemealSuccessChance = 1.0F;
+
+            @Comment("If true, bonemeal always grows from the top of the sugar cane regardless of which block was clicked.")
+            public boolean bonemealTargetTop = false;
+
+            @Comment("Show green happy particles and sound when bonemeal is used on sugar cane.")
+            public boolean bonemealParticles = false;
         }
     }
 }
