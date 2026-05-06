@@ -154,5 +154,14 @@ public class TenseiConfigWorld extends ConfigurationPart {
                     "Default: 1")
             public int waterSearchHeight = 1;
         }
+
+        public SugarCane sugarCane;
+        public class SugarCane extends ConfigurationPart {
+            @Comment("Allow bonemeal to be used on sugar cane")
+            public boolean bonemealEnabled = false;
+
+            @Comment("Probability (0.0 - 1.0) that bonemeal successfully grows the sugar cane by one block.")
+            public float bonemealSuccessChance = 1.0F;
+        }
     }
 }
