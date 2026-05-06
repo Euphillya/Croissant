@@ -132,5 +132,27 @@ public class TenseiConfigWorld extends ConfigurationPart {
             @Comment("Allow chests to be waterlogged.")
             public boolean allowWaterlogging = true;
         }
+
+        public Farmland farmland;
+        public class Farmland extends ConfigurationPart {
+            @Comment("""
+                    Minimum fall distance (in blocks) required to trample farmland.
+                    The actual threshold is fallDistance - this value > 0.
+                    Default: 0.5""")
+            public double trampleMinFallDistance = 0.5;
+            @Comment("""
+                    Minimum entity volume (width * width * height) required to trample farmland.
+                    Entities smaller than this value cannot trample farmland.
+                    Default: 0.512""")
+            public double trampleMinEntityVolume = 0.512;
+
+            @Comment("Horizontal radius (in blocks) to search for water sources around farmland.\n" +
+                    "Default: 4")
+            public int waterSearchRadius = 4;
+
+            @Comment("Vertical range (in blocks above farmland level) to search for water sources.\n" +
+                    "Default: 1")
+            public int waterSearchHeight = 1;
+        }
     }
 }

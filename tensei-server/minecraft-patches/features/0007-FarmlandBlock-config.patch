@@ -1,0 +1,46 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Wed, 6 May 2026 12:00:47 +0200
+Subject: [PATCH] FarmlandBlock config
+
+
+diff --git a/net/minecraft/world/level/block/FarmlandBlock.java b/net/minecraft/world/level/block/FarmlandBlock.java
+index 2ca25e3b984806e2d07f02688512e6ef0c52ed76..72a44e6041d890af82d423de1581b207472b197c 100644
+--- a/net/minecraft/world/level/block/FarmlandBlock.java
++++ b/net/minecraft/world/level/block/FarmlandBlock.java
+@@ -120,10 +120,10 @@ public class FarmlandBlock extends Block {
+         super.fallOn(level, state, pos, entity, fallDistance); // CraftBukkit - moved here as game rules / events shouldn't affect fall damage.
+         if (level instanceof ServerLevel serverLevel
+             && !level.canvasConfig().farming.disableFarmlandTrampling // Canvas - disable farmland trampling config
+-            && level.getRandom().nextFloat() < fallDistance - 0.5
++            && level.getRandom().nextFloat() < fallDistance - level.tensei.blocks.farmland.trampleMinFallDistance // TenseiMC - configurable minimum fall distance required to trample farmland
+             && entity instanceof LivingEntity
+             && (entity instanceof Player || serverLevel.getGameRules().get(GameRules.MOB_GRIEFING))
+-            && entity.getBbWidth() * entity.getBbWidth() * entity.getBbHeight() > 0.512F) {
++            && entity.getBbWidth() * entity.getBbWidth() * entity.getBbHeight() > level.tensei.blocks.farmland.trampleMinEntityVolume) { // TenseiMC - configurable minimum entity volume (width² × height) required to trample farmland
+             // CraftBukkit start - Interact soil
+             org.bukkit.event.Cancellable cancellable;
+             if (entity instanceof Player) {
+@@ -170,11 +170,19 @@ public class FarmlandBlock extends Block {
+         int xOff = pos.getX();
+         int yOff = pos.getY();
+         int zOff = pos.getZ();
+-        for (int dz = -4; dz <= 4; ++dz) {
++        // TenseiMC start - configurable water search radius/height
++        int radius = 4;
++        int height = 1;
++        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
++            radius = serverLevel.tensei.blocks.farmland.waterSearchRadius;
++            height = serverLevel.tensei.blocks.farmland.waterSearchHeight;
++        }
++        for (int dz = -radius; dz <= radius; ++dz) {
+             int z = dz + zOff;
+-            for (int dx = -4; dx <= 4; ++dx) {
++            for (int dx = -radius; dx <= radius; ++dx) {
+                 int x = xOff + dx;
+-                for (int dy = 0; dy <= 1; ++dy) {
++                for (int dy = 0; dy <= height; ++dy) {
++        // TenseiMC end - configurable water search radius/height
+                     int y = dy + yOff;
+                     net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk)level.getChunk(x >> 4, z >> 4);
+                     net.minecraft.world.level.material.FluidState fluid = chunk.getBlockStateFinal(x, y, z).getFluidState();
