@@ -1,0 +1,28 @@
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -593,7 +_,7 @@
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Canvas", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page // Canvas - Rebrand
++                Metrics metrics = new Metrics("TenseiMC", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page // Canvas - Rebrand // Tensei - Rebrand
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -610,14 +_,14 @@
+                     // Canvas start - new versioning schem for bstats
+                     io.papermc.paper.ServerBuildInfo buildInfo = io.papermc.paper.ServerBuildInfo.buildInfo();
+                     final int num = buildInfo.buildNumber().getAsInt();
+-                    paperVersion = "Canvas-V3-" +
++                    paperVersion = "TenseiMC-" + // Tensei - Rebrand
+                         buildInfo.minecraftVersionName() + "-" +
+                         (num != -1 ? num : "DEV");
+                     // Canvas end - new versioning schem for bstats
+                 } else {
+                     paperVersion = "unknown";
+                 }
+-                metrics.addCustomChart(new Metrics.SimplePie("canvas_version", () -> paperVersion)); // Folia - we have our own bstats page // Canvas - Rebrand
++                metrics.addCustomChart(new Metrics.SimplePie("tenseimc_version", () -> paperVersion)); // Folia - we have our own bstats page // Canvas - Rebrand // Tensei - Rebrand
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
