@@ -50,7 +50,8 @@ public record StorageConfig(
     public record Resilience(
             Login login,
             Autosave autosave,
-            Shutdown shutdown
+            Shutdown shutdown,
+            Health health
     ) {
 
         public enum FailureMode {
@@ -81,6 +82,15 @@ public record StorageConfig(
         public record Shutdown(
                 long flushTimeoutMs,
                 String walPath
+        ) {
+        }
+
+        public record Health(
+                long checkIntervalMs,
+                int failureThreshold,
+                int recoveryThreshold,
+                String dbDownKickMessage,
+                String dbDownLoginMessage
         ) {
         }
     }

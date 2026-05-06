@@ -8,7 +8,12 @@ import fr.euphyllia.tenseimc.storage.database.postgres.util.Identifiers;
 import fr.euphyllia.tenseimc.storage.model.StorageHealth;
 import fr.euphyllia.tenseimc.storage.resilience.StorageFailureHandler;
 import fr.euphyllia.tenseimc.storage.resilience.StrictKickFailureHandler;
+import io.papermc.paper.adventure.PaperAdventure;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import org.bukkit.craftbukkit.CraftServer;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -17,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -204,6 +210,50 @@ public class PostgresManager {
             return false;
         }
     }
+
+    static void onStorageDown() {
+        final String rawMsg = config.resilience().health().dbDownKickMessage();
+        final Component kickMessage;
+        try {
+            kickMessage = MiniMessage.miniMessage().deserialize(rawMsg);
+        } catch (final Exception ex) {
+            LOGGER.warn("Failed to parse dbDownKickMessage '{}', using fallback", rawMsg, ex);
+            kickAllWithFallback();
+            return;
+        }
+
+        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> {
+            final List<ServerPlayer> players = List.copyOf(server.getPlayerList().players);
+            int count = 0;
+            for (final ServerPlayer player : players) {
+                try {
+                    player.connection.disconnect(PaperAdventure.asVanilla(kickMessage), io.papermc.paper.connection.DisconnectionReason.UNKNOWN);
+                    count++;
+                } catch (final Exception ex) {
+                    LOGGER.warn("Failed to kick {} on storage down", player.getUUID(), ex);
+                }
+            }
+            LOGGER.warn("Kicked {} players due to storage going DOWN", count);
+        });
+    }
+
+    private static void kickAllWithFallback() {
+        final Component fallback = Component.text("Database unavailable — please reconnect later.");
+        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> {
+            final List<ServerPlayer> players = List.copyOf(server.getPlayerList().players);
+            for (final ServerPlayer player : players) {
+                try {
+                    player.connection.disconnect(PaperAdventure.asVanilla(fallback), io.papermc.paper.connection.DisconnectionReason.UNKNOWN);
+                } catch (final Exception ignored) {}
+            }
+        });
+    }
+
+
+    static void onStorageRecovered() {
+        LOGGER.info("Storage is healthy again, accepting connections");
+    }
+
 
     public static synchronized void shutdown() {
         if (!enabled) return;

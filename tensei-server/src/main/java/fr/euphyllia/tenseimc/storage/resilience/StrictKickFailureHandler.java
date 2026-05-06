@@ -51,7 +51,7 @@ public final class StrictKickFailureHandler implements StorageFailureHandler {
     }
 
     private void kickIfOnline(final UUID uuid, final Component reason) {
-        this.server.execute(() -> {
+        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> {
             final ServerPlayer player = this.server.getPlayerList().getPlayer(uuid);
             if (player != null) {
                 player.connection.disconnect(PaperAdventure.asVanilla(reason), DisconnectionReason.UNKNOWN);

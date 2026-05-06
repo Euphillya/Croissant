@@ -4,8 +4,7 @@ import fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal;
 
 public final class StorageConfigMapper {
 
-    private StorageConfigMapper() {
-    }
+    private StorageConfigMapper() {}
 
     public static StorageConfig toStorageConfig(final TenseiConfigGlobal.Storage cfg) {
         return new StorageConfig(
@@ -58,6 +57,13 @@ public final class StorageConfigMapper {
                         new StorageConfig.Resilience.Shutdown(
                                 cfg.resilience.shutdown.flushTimeoutMs,
                                 cfg.resilience.shutdown.walPath
+                        ),
+                        new StorageConfig.Resilience.Health(
+                                cfg.resilience.health.checkIntervalMs,
+                                cfg.resilience.health.failureThreshold,
+                                cfg.resilience.health.recoveryThreshold,
+                                cfg.resilience.health.dbDownKickMessage,
+                                cfg.resilience.health.dbDownLoginMessage
                         )
                 )
         );

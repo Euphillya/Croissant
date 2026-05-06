@@ -64,6 +64,7 @@ public class TenseiConfigGlobal extends ConfigurationPart {
             public Login login = new Login();
             public Autosave autosave = new Autosave();
             public Shutdown shutdown = new Shutdown();
+            public Health health = new Health();
 
             public class Login extends ConfigurationPart {
                 public int maxRetries = 2;
@@ -88,6 +89,16 @@ public class TenseiConfigGlobal extends ConfigurationPart {
             public class Shutdown extends ConfigurationPart {
                 public long flushTimeoutMs = 30_000L;
                 public String walPath = "data/storage-wal";
+            }
+
+            public class Health extends ConfigurationPart {
+                public long checkIntervalMs = 10_000L;
+                public int failureThreshold = 2;
+                public int recoveryThreshold = 2;
+                public String dbDownKickMessage =
+                        "<red>Base de données indisponible — veuillez vous reconnecter dans quelques minutes.";
+                public String dbDownLoginMessage =
+                        "<red>Service de données actuellement indisponible, réessayez dans quelques instants.";
             }
 
             public enum FailureMode {
