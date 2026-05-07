@@ -169,5 +169,20 @@ public class TenseiConfigWorld extends ConfigurationPart {
             @Comment("Show green happy particles and sound when bonemeal is used on sugar cane.")
             public boolean bonemealParticles = false;
         }
+
+        public NetherWart netherWart;
+        public class NetherWart extends ConfigurationPart {
+            @Comment("Allow bonemeal to be used on nether wart.")
+            public boolean bonemealEnabled = false;
+
+            @Comment("Probability (0.0 - 1.0) that bonemeal successfully grows the nether wart.")
+            public float bonemealSuccessChance = 1.0F;
+
+            @Comment("Number of growth stages advanced per bonemeal use.")
+            public int bonemealGrowAmount = 1;
+
+            @Comment("Show green happy particles when bonemeal is used on nether wart.")
+            public boolean bonemealParticles = true;
+        }
     }
 }

@@ -5,7 +5,7 @@ Subject: [PATCH] feat: Implement BonemealableBlock for SugarCaneBlock
 
 
 diff --git a/net/minecraft/world/level/block/SugarCaneBlock.java b/net/minecraft/world/level/block/SugarCaneBlock.java
-index 8964d69bb1baeefafefb1350f7622eb653697490..f2423f62f60cd9ec7fb276b776df4319cfa9c9f0 100644
+index 8964d69bb1baeefafefb1350f7622eb653697490..cdd9334437d65bb895d4f7533469bfcd8478f348 100644
 --- a/net/minecraft/world/level/block/SugarCaneBlock.java
 +++ b/net/minecraft/world/level/block/SugarCaneBlock.java
 @@ -19,7 +19,7 @@ import net.minecraft.world.level.material.FluidState;
