@@ -6,7 +6,7 @@ Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 8b8b1393f26b5c5b387b5b1b3fb5ec4e4212fce2..24a769a59cdd76bbea55d8fb87bad5fdb9999dcd 100644
+index d2b0400c83981c46498cdeb6185c09b05aa3f165..9f864d9f135a226c7be62622807109a4e7534a4d 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -16,9 +16,9 @@ index 8b8b1393f26b5c5b387b5b1b3fb5ec4e4212fce2..24a769a59cdd76bbea55d8fb87bad5fd
 -    public final PlayerDataStorage playerDataStorage;
 +    public PlayerDataStorage playerDataStorage; // TenseiMC - non-final to allow Postgres swap
      private final SavedDataStorage savedDataStorage;
-     private final List<Runnable> tickables = Lists.newArrayList();
      // Paper - per-level GameRules
-@@ -1156,6 +1156,14 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     private ServerConnectionListener connection;
+@@ -1155,6 +1155,14 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
          this.savedDataStorage.close();
          this.resources.close();
  
@@ -33,7 +33,7 @@ index 8b8b1393f26b5c5b387b5b1b3fb5ec4e4212fce2..24a769a59cdd76bbea55d8fb87bad5fd
          try {
              this.storageSource.close();
          } catch (IOException var4) {
-@@ -1333,6 +1341,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1332,6 +1340,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
              if (!this.initServer()) {
                  throw new IllegalStateException("Failed to initialize server");
              }
