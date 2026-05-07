@@ -23,7 +23,7 @@ for (name in listOf("tensei-api", "tensei-server")) {
 gradle.lifecycle.beforeProject {
     val mcVersion = providers.gradleProperty("mcVersion").get().trim()
     val tenseiChannel = providers.gradleProperty("channel").get().trim()
-    val tenseiBuildNumber = providers.environmentVariable("BUILD_NUMBER").orNull?.trim()?.toInt()
+    val tenseiBuildNumber = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.trim()?.toInt()
     val versionString = if (tenseiBuildNumber == null) {
         "$mcVersion.local-SNAPSHOT"
     } else {
