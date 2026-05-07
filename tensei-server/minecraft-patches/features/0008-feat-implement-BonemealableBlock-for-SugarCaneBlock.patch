@@ -68,7 +68,7 @@ index 8964d69bb1baeefafefb1350f7622eb653697490..f2423f62f60cd9ec7fb276b776df4319
 +        level.setBlock(topPos, level.getBlockState(topPos).setValue(AGE, 0), Block.UPDATE_NONE);
 +
 +        if (level.tensei.blocks.sugarCane.bonemealParticles) {
-+            level.levelEvent(net.minecraft.world.level.block.LevelEvent.PARTICLES_AND_SOUND_PLANT_GROWTH, topPos, 0);
++            level.sendParticles(net.minecraft.core.particles.ParticleTypes.HAPPY_VILLAGER, topPos.getX() + 0.5, topPos.getY() + 0.5, topPos.getZ() + 0.5, 9, 0.25, 0.25, 0.25, 0.0);
 +        }
 +    }
  }
