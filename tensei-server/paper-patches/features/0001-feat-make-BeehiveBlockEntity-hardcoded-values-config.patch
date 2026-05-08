@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Fri, 8 May 2026 18:57:07 +0200
+Subject: [PATCH] feat: make BeehiveBlockEntity hardcoded values configurable
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java b/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
+index 6b5853ced761ef55de883fe86c009b94ccb159fc..0396f3468d3372d3576e501490353ff80043a0b7 100644
+--- a/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
++++ b/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
+@@ -55,9 +55,9 @@ public final class CapturedBlockState extends CraftBlockState {
+             // Begin copied block from BeehiveDecorator
+             worldGenLevel.getBlockEntity(pos, BlockEntityType.BEEHIVE).ifPresent(beehiveBlockEntity -> {
+                 int i1 = 2 + randomSource.nextInt(2);
+-
++                int minTicks = worldGenLevel.getLevel().tensei.blocks.beehive.minOccupationTicksNectarless;
+                 for (int i2 = 0; i2 < i1; i2++) {
+-                    beehiveBlockEntity.storeBee(BeehiveBlockEntity.Occupant.create(randomSource.nextInt(599)));
++                    beehiveBlockEntity.storeBee(BeehiveBlockEntity.Occupant.create(randomSource.nextInt(599), minTicks));
+                 }
+             });
+             // End copied block

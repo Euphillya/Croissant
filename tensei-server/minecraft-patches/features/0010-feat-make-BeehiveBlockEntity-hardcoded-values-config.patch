@@ -1,0 +1,91 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Fri, 8 May 2026 18:45:30 +0200
+Subject: [PATCH] feat: make BeehiveBlockEntity hardcoded values configurable
+
+
+diff --git a/net/minecraft/world/level/block/entity/BeehiveBlockEntity.java b/net/minecraft/world/level/block/entity/BeehiveBlockEntity.java
+index 62d7a44f139c28a38b14833380e2ec2bf84f3a75..c123bab9dedc0256c02e3ee3300acb210cf75653 100644
+--- a/net/minecraft/world/level/block/entity/BeehiveBlockEntity.java
++++ b/net/minecraft/world/level/block/entity/BeehiveBlockEntity.java
+@@ -132,7 +132,7 @@ public class BeehiveBlockEntity extends BlockEntity {
+                     if (!this.isSedated()) {
+                         bee.setTarget(player, org.bukkit.event.entity.EntityTargetEvent.TargetReason.CLOSEST_PLAYER); // CraftBukkit
+                     } else {
+-                        bee.setStayOutOfHiveCountdown(400);
++                        bee.setStayOutOfHiveCountdown(level.tensei.blocks.beehive.minTicksBeforeReenteringHive);
+                     }
+                 }
+             }
+@@ -262,7 +262,7 @@ public class BeehiveBlockEntity extends BlockEntity {
+                     // CraftBukkit end
+                     if (entity instanceof Bee bee) {
+                         RandomSource random = level.getRandom();
+-                        if (savedFlowerPos != null && !bee.hasSavedFlowerPos() && random.nextFloat() < 0.9F) {
++                        if (savedFlowerPos != null && !bee.hasSavedFlowerPos() && random.nextFloat() < level.tensei.blocks.beehive.flowerPosInheritChance) {
+                             bee.setSavedFlowerPos(savedFlowerPos);
+                         }
+ 
+@@ -271,7 +271,7 @@ public class BeehiveBlockEntity extends BlockEntity {
+                             if (state.is(BlockTags.BEEHIVES, s -> s.hasProperty(BeehiveBlock.HONEY_LEVEL))) {
+                                 int honeyLevel = getHoneyLevel(state);
+                                 if (honeyLevel < 5) {
+-                                    int levelIncrease = random.nextInt(100) == 0 ? 2 : 1;
++                                    int levelIncrease = random.nextInt(level.tensei.blocks.beehive.doubleHoneyIncreaseChance) == 0 ? 2 : 1;
+                                     if (honeyLevel + levelIncrease > 5) {
+                                         levelIncrease--;
+                                     }
+@@ -346,7 +346,7 @@ public class BeehiveBlockEntity extends BlockEntity {
+ 
+     public static void serverTick(final Level level, final BlockPos blockPos, final BlockState state, final BeehiveBlockEntity entity) {
+         tickOccupants(level, blockPos, state, entity.stored, entity.savedFlowerPos);
+-        if (!entity.stored.isEmpty() && level.getRandom().nextDouble() < 0.005) {
++        if (!entity.stored.isEmpty() && level.getRandom().nextDouble() < level.tensei.blocks.beehive.workSoundChance) {
+             double x = blockPos.getX() + 0.5;
+             double y = blockPos.getY();
+             double z = blockPos.getZ() + 0.5;
+@@ -459,14 +459,26 @@ public class BeehiveBlockEntity extends BlockEntity {
+                 BeehiveBlockEntity.IGNORED_BEE_TAGS.forEach(output::discard);
+                 CompoundTag entityTag = output.buildResult();
+                 boolean hasNectar = entityTag.getBooleanOr("HasNectar", false);
+-                var5 = new BeehiveBlockEntity.Occupant(TypedEntityData.of(entity.getType(), entityTag), 0, hasNectar ? 2400 : 600);
++                int minTicks;
++                //noinspection resource
++                if (entity.level() instanceof ServerLevel serverLevel) {
++                    minTicks = hasNectar
++                            ? serverLevel.tensei.blocks.beehive.minOccupationTicksNectar
++                            : serverLevel.tensei.blocks.beehive.minOccupationTicksNectarless;
++                } else {
++                    minTicks = hasNectar ? 2400 : 600; // fallback
++                }
++                var5 = new BeehiveBlockEntity.Occupant(TypedEntityData.of(entity.getType(), entityTag), 0, minTicks);
+             }
+ 
+             return var5;
+         }
+ 
+         public static BeehiveBlockEntity.Occupant create(final int ticksInHive) {
+-            return new BeehiveBlockEntity.Occupant(TypedEntityData.of(EntityType.BEE, new CompoundTag()), ticksInHive, 600);
++            return create(ticksInHive, 600);
++        }
++        public static BeehiveBlockEntity.Occupant create(final int ticksInHive, final int minTicksInHive) {
++            return new BeehiveBlockEntity.Occupant(TypedEntityData.of(EntityType.BEE, new CompoundTag()), ticksInHive, minTicksInHive);
+         }
+ 
+         public @Nullable Entity createEntity(final Level level, final BlockPos hivePos) {
+diff --git a/net/minecraft/world/level/levelgen/feature/treedecorators/BeehiveDecorator.java b/net/minecraft/world/level/levelgen/feature/treedecorators/BeehiveDecorator.java
+index 44bb182314f8a09efae237fcbb5e9a30b5c38846..a9afb147c3ef8ae6cfc197c41c8ff3fe3192919e 100644
+--- a/net/minecraft/world/level/levelgen/feature/treedecorators/BeehiveDecorator.java
++++ b/net/minecraft/world/level/levelgen/feature/treedecorators/BeehiveDecorator.java
+@@ -56,9 +56,9 @@ public class BeehiveDecorator extends TreeDecorator {
+                         context.setBlock(hivePos.get(), Blocks.BEE_NEST.defaultBlockState().setValue(BeehiveBlock.FACING, WORLDGEN_FACING));
+                         context.level().getBlockEntity(hivePos.get(), BlockEntityType.BEEHIVE).ifPresent(beehive -> {
+                             int numBees = 2 + random.nextInt(2);
+-
++                            int minTicks = context.level().getLevel().tensei.blocks.beehive.minOccupationTicksNectarless;
+                             for (int count = 0; count < numBees; count++) {
+-                                beehive.storeBee(BeehiveBlockEntity.Occupant.create(random.nextInt(599)));
++                                beehive.storeBee(BeehiveBlockEntity.Occupant.create(random.nextInt(599), minTicks));
+                             }
+                         });
+                     }

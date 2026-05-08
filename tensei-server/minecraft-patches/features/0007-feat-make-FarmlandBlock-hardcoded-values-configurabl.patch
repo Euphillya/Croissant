@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
 Date: Wed, 6 May 2026 12:00:47 +0200
-Subject: [PATCH] FarmlandBlock config
+Subject: [PATCH] feat: make FarmlandBlock hardcoded values configurable
 
 
 diff --git a/net/minecraft/world/level/block/FarmlandBlock.java b/net/minecraft/world/level/block/FarmlandBlock.java
