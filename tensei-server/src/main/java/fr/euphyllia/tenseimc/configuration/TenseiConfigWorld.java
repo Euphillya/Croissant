@@ -184,5 +184,26 @@ public class TenseiConfigWorld extends ConfigurationPart {
             @Comment("Show green happy particles when bonemeal is used on nether wart.")
             public boolean bonemealParticles = true;
         }
+
+        public Beehive beehive;
+        public class Beehive extends ConfigurationPart {
+            @Comment("Minimum ticks before a bee can re-enter a hive after exiting.\nDefault: 400 (20 seconds)")
+            public int minTicksBeforeReenteringHive = 400;
+
+            @Comment("Minimum ticks a bee with nectar must spend in the hive.\nDefault: 2400 (2 minutes)")
+            public int minOccupationTicksNectar = 2400;
+
+            @Comment("Minimum ticks a bee without nectar must spend in the hive.\nDefault: 600 (30 seconds)")
+            public int minOccupationTicksNectarless = 600;
+
+            @Comment("Probability per tick that the hive plays its ambient work sound while occupied.\nDefault: 0.005")
+            public double workSoundChance = 0.005;
+
+            @Comment("Probability that a released bee inherits the hive's saved flower position.\nDefault: 0.9")
+            public float flowerPosInheritChance = 0.9F;
+
+            @Comment("Probability (1 in N) that a honey delivery increases the honey level by 2 instead of 1.\nDefault: 100")
+            public int doubleHoneyIncreaseChance = 100;
+        }
     }
 }
