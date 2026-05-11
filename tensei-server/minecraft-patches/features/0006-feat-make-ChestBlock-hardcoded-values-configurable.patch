@@ -5,7 +5,7 @@ Subject: [PATCH] feat: make ChestBlock hardcoded values configurable
 
 
 diff --git a/net/minecraft/world/level/block/ChestBlock.java b/net/minecraft/world/level/block/ChestBlock.java
-index d8637635282eaf18a09d9d62ef38298239ea1d82..303418bf860997d022864bccf38ab1dce9c17d31 100644
+index ee6f96020d3eae1d7c7fd141b2460d3d46ad0a3f..b29af4dae1cb9846806cff27bdef80084d35a371 100644
 --- a/net/minecraft/world/level/block/ChestBlock.java
 +++ b/net/minecraft/world/level/block/ChestBlock.java
 @@ -258,7 +258,7 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
@@ -17,20 +17,7 @@ index d8637635282eaf18a09d9d62ef38298239ea1d82..303418bf860997d022864bccf38ab1dc
      }
  
      protected ChestType getChestType(final Level level, final BlockPos pos, final Direction facingDirection) {
-@@ -384,6 +384,12 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
-     }
- 
-     public static boolean isBlockedChestByBlock(final BlockGetter level, final BlockPos pos) {
-+        // Tensei start - openWithBlockAbove
-+        if (level instanceof LevelAccessor levelAccessor
-+                && levelAccessor.getMinecraftWorld().tensei.blocks.chest.openWithBlockAbove) {
-+            return false;
-+        }
-+        // Tensei end - openWithBlockAbove
-         BlockPos above = pos.above();
-         return level.getBlockState(above).isRedstoneConductor(level, above);
-     }
-@@ -413,6 +419,11 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+@@ -413,6 +413,11 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
  
      @Override
      protected int getAnalogOutputSignal(final BlockState state, final Level level, final BlockPos pos, final Direction direction) {

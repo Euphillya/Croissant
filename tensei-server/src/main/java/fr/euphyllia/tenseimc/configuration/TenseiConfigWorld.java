@@ -123,9 +123,6 @@ public class TenseiConfigWorld extends ConfigurationPart {
 
         public Chest chest;
         public class Chest extends ConfigurationPart {
-            @Comment("Allow opening chests even when a solid block is above them.")
-            public boolean openWithBlockAbove = false;
-
             @Comment("Allow chests to output a comparator signal based on their contents.")
             public boolean comparatorOutputEnabled = true;
 
