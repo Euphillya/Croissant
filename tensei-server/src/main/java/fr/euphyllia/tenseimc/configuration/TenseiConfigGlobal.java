@@ -1,6 +1,7 @@
 package fr.euphyllia.tenseimc.configuration;
 
 import io.papermc.paper.configuration.ConfigurationPart;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
 
 @SuppressWarnings({"CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal", "InnerClassMayBeStatic"})
 public class TenseiConfigGlobal extends ConfigurationPart {
@@ -109,5 +110,10 @@ public class TenseiConfigGlobal extends ConfigurationPart {
         }
     }
 
+    public Scoreboard scoreboard = new Scoreboard();
+    public class Scoreboard extends ConfigurationPart {
+        @Comment("Enable or disable scoreboard - Scoreboard will be saved to world/data/scoreboard.json")
+        public boolean enabled = true;
+    }
 
 }

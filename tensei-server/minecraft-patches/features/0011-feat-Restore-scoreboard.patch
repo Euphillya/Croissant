@@ -1,0 +1,629 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Wed, 13 May 2026 11:24:58 +0200
+Subject: [PATCH] feat : Restore scoreboard
+
+
+diff --git a/net/minecraft/commands/Commands.java b/net/minecraft/commands/Commands.java
+index a121b8041632791e8ece54c3141f68a24b3744a4..e684fab4bb97fde36eb4da4b46ca33183e752098 100644
+--- a/net/minecraft/commands/Commands.java
++++ b/net/minecraft/commands/Commands.java
+@@ -238,7 +238,7 @@ public class Commands {
+         RotateCommand.register(this.dispatcher);
+         SayCommand.register(this.dispatcher);
+         //ScheduleCommand.register(this.dispatcher); // Folia - region threading
+-        //ScoreboardCommand.register(this.dispatcher, context); // Folia - region threading
++        ScoreboardCommand.register(this.dispatcher, context); // Folia - region threading
+         SeedCommand.register(this.dispatcher, commandSelection != Commands.CommandSelection.INTEGRATED);
+         VersionCommand.register(this.dispatcher, commandSelection != Commands.CommandSelection.INTEGRATED);
+         SetBlockCommand.register(this.dispatcher, context);
+@@ -250,8 +250,8 @@ public class Commands {
+         StopwatchCommand.register(this.dispatcher);
+         SummonCommand.register(this.dispatcher, context);
+         TagCommand.register(this.dispatcher); // Canvas - TODO - do better
+-        //TeamCommand.register(this.dispatcher, context); // Folia - region threading - TODO later
+-        //TeamMsgCommand.register(this.dispatcher); // Folia - region threading - TODO later
++        TeamCommand.register(this.dispatcher, context); // Folia - region threading - TODO later
++        TeamMsgCommand.register(this.dispatcher); // Folia - region threading - TODO later
+         TeleportCommand.register(this.dispatcher);
+         TellRawCommand.register(this.dispatcher, context);
+         //TestCommand.register(this.dispatcher, context); // Folia - region threading
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index fd2e69049c1b92cf1a5f37aba73ec8d01b7e13a9..c12a7e50ab0e9046e585ff48d67d3aa0cdec6fc3 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -757,7 +757,15 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             );
+             this.worldData = worldDataAndGenSettings.data();
+             this.worldData.setGameType(((net.minecraft.server.dedicated.DedicatedServer) this).getProperties().gameMode.get()); // From DedicatedServer.init
+-        this.scoreboard.load(this.savedDataStorage.computeIfAbsent(ScoreboardSaveData.TYPE).getData());
++        // TenseiMC start - load scoreboard data from file
++        if (fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().scoreboard.enabled) {
++            var scoreboardDir = this.storageSource
++                    .getLevelPath(net.minecraft.world.level.storage.LevelResource.ROOT)
++                    .resolve("data");
++            var fileSaveData = fr.euphyllia.tenseimc.scoreboard.FileScoreboardSaveData.loadOrCreate(scoreboardDir);
++            this.savedDataStorage.set(ScoreboardSaveData.TYPE, fileSaveData);
++            this.scoreboard.load(fileSaveData.getData());
++        } else this.scoreboard.load(this.savedDataStorage.computeIfAbsent(ScoreboardSaveData.TYPE).getData()); // TenseiMC end - load scoreboard data from file
+         this.commandStorage = new CommandStorage(this.savedDataStorage);
+         this.stopwatches = this.savedDataStorage.computeIfAbsent(Stopwatches.TYPE);
+             this.server.scoreboardManager = new org.bukkit.craftbukkit.scoreboard.CraftScoreboardManager(this, serverLevel.getScoreboard());
+@@ -1152,6 +1160,16 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     }
+     public void stopPart2() {
+         // Folia end - region threading
++        // TenseiMC start - flush scoreboard to JSON before close
++        if (fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().scoreboard.enabled) {
++            try {
++                this.scoreboard.storeToSaveDataIfDirty(
++                        this.savedDataStorage.computeIfAbsent(ScoreboardSaveData.TYPE));
++            } catch (final Exception ex) {
++                LOGGER.error("Failed to flush scoreboard before shutdown", ex);
++            }
++        }
++        // TenseiMC end - flush scoreboard to JSON before close
+         this.savedDataStorage.close();
+         this.resources.close();
+ 
+diff --git a/net/minecraft/server/ServerScoreboard.java b/net/minecraft/server/ServerScoreboard.java
+index 9bf09b888425e491072864265c8de3885154a0ba..ffdcd0e1c8d31246971813018209ffadd1fee702 100644
+--- a/net/minecraft/server/ServerScoreboard.java
++++ b/net/minecraft/server/ServerScoreboard.java
+@@ -26,8 +26,8 @@ import org.jspecify.annotations.Nullable;
+ 
+ public class ServerScoreboard extends Scoreboard {
+     private final MinecraftServer server;
+-    private final Set<Objective> trackedObjectives = Sets.newHashSet();
+-    private boolean dirty;
++    private final Set<Objective> trackedObjectives = java.util.concurrent.ConcurrentHashMap.newKeySet(); // TenseiMC - Sets.newHashSet() -> ConcurrentHashMap.newKeySet()
++    private final java.util.concurrent.atomic.AtomicBoolean dirty = new java.util.concurrent.atomic.AtomicBoolean(false); // TenseiMC - AtomicBoolean for thread safety
+ 
+     public ServerScoreboard(final MinecraftServer server) {
+         this.server = server;
+@@ -211,12 +211,11 @@ public class ServerScoreboard extends Scoreboard {
+     }
+ 
+     protected void setDirty() {
+-        this.dirty = true;
++        this.dirty.set(true); // TenseiMC - atomic
+     }
+ 
+     public void storeToSaveDataIfDirty(final ScoreboardSaveData saveData) {
+-        if (this.dirty) {
+-            this.dirty = false;
++        if (this.dirty.compareAndSet(true, false)) { // TenseiMC - atomic compare-and-set so only one thread does the save
+             saveData.setData(this.store());
+         }
+     }
+@@ -295,9 +294,10 @@ public class ServerScoreboard extends Scoreboard {
+ 
+     private void updatePlayerWaypoint(final String player) {
+         ServerPlayer serverPlayer = this.server.getPlayerList().getPlayerByName(player);
+-        if (serverPlayer != null) {
+-            serverPlayer.level().getWaypointManager().remakeConnections(serverPlayer);
+-        }
++        // TenseiMC start - Check for null in case player disconnected between getPlayerByName
++        if (serverPlayer == null) return;
++        serverPlayer.level().getWaypointManager().remakeConnections(serverPlayer);
++        // TenseiMC end - Check for null in case player disconnected between getPlayerByName
+     }
+ 
+     private void updateTeamWaypoints(final PlayerTeam team) {
+diff --git a/net/minecraft/server/commands/ScoreboardCommand.java b/net/minecraft/server/commands/ScoreboardCommand.java
+index a4fa358bf6bb3c84a024620ee77f90b6ac68089b..7000c36a19efd35db8eb8121dc41cef48517e78e 100644
+--- a/net/minecraft/server/commands/ScoreboardCommand.java
++++ b/net/minecraft/server/commands/ScoreboardCommand.java
+@@ -66,6 +66,9 @@ public class ScoreboardCommand {
+     );
+ 
+     public static void register(final CommandDispatcher<CommandSourceStack> dispatcher, final CommandBuildContext context) {
++        if (!fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().scoreboard.enabled) {
++            return;
++        }
+         dispatcher.register(
+             Commands.literal("scoreboard")
+                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+diff --git a/net/minecraft/server/commands/TeamCommand.java b/net/minecraft/server/commands/TeamCommand.java
+index 2dca4067cbd55fd6f08a3e90c79167b156a56c8b..2e8f313a1a1c833751b663d235b29ae9935f55cf 100644
+--- a/net/minecraft/server/commands/TeamCommand.java
++++ b/net/minecraft/server/commands/TeamCommand.java
+@@ -59,6 +59,9 @@ public class TeamCommand {
+     );
+ 
+     public static void register(final CommandDispatcher<CommandSourceStack> dispatcher, final CommandBuildContext context) {
++        if (!fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().scoreboard.enabled) {
++            return;
++        }
+         dispatcher.register(
+             Commands.literal("team")
+                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+diff --git a/net/minecraft/server/commands/TeamMsgCommand.java b/net/minecraft/server/commands/TeamMsgCommand.java
+index d04fd8ab5f8e3c1697af5448c320838a822dbf1f..4b198ef597ac6476db6feb114b360ed5113073c6 100644
+--- a/net/minecraft/server/commands/TeamMsgCommand.java
++++ b/net/minecraft/server/commands/TeamMsgCommand.java
+@@ -26,6 +26,9 @@ public class TeamMsgCommand {
+     private static final SimpleCommandExceptionType ERROR_NOT_ON_TEAM = new SimpleCommandExceptionType(Component.translatable("commands.teammsg.failed.noteam"));
+ 
+     public static void register(final CommandDispatcher<CommandSourceStack> dispatcher) {
++        if (!fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().scoreboard.enabled) {
++            return;
++        }
+         LiteralCommandNode<CommandSourceStack> msg = dispatcher.register(
+             Commands.literal("teammsg")
+                 .then(
+diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
+index cf9da0c2b60eb6fd2a06821b03a761aa57fbd6b2..4fe83a947e95fa27b781571faa73e55e5072e2f1 100644
+--- a/net/minecraft/server/players/PlayerList.java
++++ b/net/minecraft/server/players/PlayerList.java
+@@ -412,11 +412,15 @@ public abstract class PlayerList {
+         this.server.notificationManager().playerJoined(player);
+         playerConnection.resumeFlushing();
+         // Paper start - Configurable player collision; Add to collideRule team if needed
+-        final net.minecraft.world.scores.Scoreboard scoreboard = this.getServer().getLevel(Level.OVERWORLD).getScoreboard();
+-        final PlayerTeam collideRuleTeam = scoreboard.getPlayerTeam(this.collideRuleTeamName);
+-        if (false && this.collideRuleTeamName != null && collideRuleTeam != null && player.getTeam() == null) { // Folia - region threading
+-            scoreboard.addPlayerToTeam(player.getScoreboardName(), collideRuleTeam);
++        // TenseiMC start - restore scoreboard
++        if (this.collideRuleTeamName != null) {
++            final net.minecraft.world.scores.Scoreboard scoreboard = this.getServer().getLevel(Level.OVERWORLD).getScoreboard();
++            final PlayerTeam collideRuleTeam = scoreboard.getPlayerTeam(this.collideRuleTeamName);
++            if (collideRuleTeam != null && player.getTeam() == null) {
++                scoreboard.addPlayerToTeam(player.getScoreboardName(), collideRuleTeam);
++            }
+         }
++        // TenseiMC end - restore scoreboard
+         // Paper end - Configurable player collision
+         // CraftBukkit start - moved down
+         LOGGER.info(
+@@ -581,7 +585,7 @@ public abstract class PlayerList {
+         // CraftBukkit end
+ 
+         // Paper start - Configurable player collision; Remove from collideRule team if needed
+-        if (false && this.collideRuleTeamName != null) { // Folia - region threading
++        if (this.collideRuleTeamName != null) { // Folia - region threading // TenseiMC - restore scoreboard
+             final net.minecraft.world.scores.Scoreboard scoreBoard = this.server.getLevel(Level.OVERWORLD).getScoreboard();
+             final PlayerTeam team = scoreBoard.getPlayersTeam(this.collideRuleTeamName);
+             if (player.getTeam() == team && team != null) {
+@@ -1342,7 +1346,7 @@ public abstract class PlayerList {
+         // CraftBukkit end
+ 
+         // Paper start - Configurable player collision; Remove collideRule team if it exists
+-        if (false && this.collideRuleTeamName != null) { // Folia - region threading
++        if (this.collideRuleTeamName != null) { // Folia - region threading // TenseiMC - restore scoreboard
+             final net.minecraft.world.scores.Scoreboard scoreboard = this.getServer().getLevel(Level.OVERWORLD).getScoreboard();
+             final PlayerTeam team = scoreboard.getPlayersTeam(this.collideRuleTeamName);
+             if (team != null) scoreboard.removePlayerTeam(team);
+diff --git a/net/minecraft/world/scores/PlayerScores.java b/net/minecraft/world/scores/PlayerScores.java
+index 1261101fe5b3f82fdc931c01ad1bc5f2202f0c4e..0aaf862ab5176efc3c9373df172e2a7638b49502 100644
+--- a/net/minecraft/world/scores/PlayerScores.java
++++ b/net/minecraft/world/scores/PlayerScores.java
+@@ -8,8 +8,8 @@ import java.util.Map;
+ import java.util.function.Consumer;
+ import org.jspecify.annotations.Nullable;
+ 
+-class PlayerScores {
+-    private final Reference2ObjectOpenHashMap<Objective, Score> scores = new Reference2ObjectOpenHashMap<>(16, 0.5F);
++public class PlayerScores { // TenseiMC - private -> public
++    private final java.util.concurrent.ConcurrentHashMap<Objective, Score> scores = new java.util.concurrent.ConcurrentHashMap<>(16, 0.5F); // TenseiMC - Object2ObjectOpenHashMap -> ConcurrentHashMap
+ 
+     public @Nullable Score get(final Objective objective) {
+         return this.scores.get(objective);
+diff --git a/net/minecraft/world/scores/PlayerTeam.java b/net/minecraft/world/scores/PlayerTeam.java
+index acb8ffc862860a304c4fa100acecfce746f5fffe..cf0bc030294f934a0fe60c661242e39a5dc6875c 100644
+--- a/net/minecraft/world/scores/PlayerTeam.java
++++ b/net/minecraft/world/scores/PlayerTeam.java
+@@ -22,7 +22,7 @@ public class PlayerTeam extends Team {
+     private static final int BIT_SEE_INVISIBLES = 1;
+     private final Scoreboard scoreboard;
+     private final String name;
+-    private final Set<String> players = Sets.newHashSet();
++    private final Set<String> players = java.util.concurrent.ConcurrentHashMap.newKeySet(); // TenseiMC - Sets.newHashSet() -> ConcurrentHashMap.newKeySet()
+     private Component displayName;
+     private Component playerPrefix = CommonComponents.EMPTY;
+     private Component playerSuffix = CommonComponents.EMPTY;
+diff --git a/net/minecraft/world/scores/Scoreboard.java b/net/minecraft/world/scores/Scoreboard.java
+index 3013937e4b458cd46b6f3e72ce46692a43511423..513181e417e482bdc409a8844d662ca3c5588d32 100644
+--- a/net/minecraft/world/scores/Scoreboard.java
++++ b/net/minecraft/world/scores/Scoreboard.java
+@@ -30,14 +30,17 @@ import org.slf4j.Logger;
+ public class Scoreboard {
+     public static final String HIDDEN_SCORE_PREFIX = "#";
+     private static final Logger LOGGER = LogUtils.getLogger();
+-    private final Object2ObjectMap<String, Objective> objectivesByName = new Object2ObjectOpenHashMap<>(16, 0.5F);
+-    private final Reference2ObjectMap<ObjectiveCriteria, List<Objective>> objectivesByCriteria = new Reference2ObjectOpenHashMap<>();
+-    private final Map<String, PlayerScores> playerScores = new Object2ObjectOpenHashMap<>(16, 0.5F);
+-    private final Map<DisplaySlot, Objective> displayObjectives = new EnumMap<>(DisplaySlot.class);
+-    private final Object2ObjectMap<String, PlayerTeam> teamsByName = new Object2ObjectOpenHashMap<>();
+-    private final Object2ObjectMap<String, PlayerTeam> teamsByPlayer = new Object2ObjectOpenHashMap<>();
++    // TenseiMC start - Object2ObjectOpenHashMap -> ConcurrentHashMap
++    protected final Map<String, Objective> objectivesByName = new java.util.concurrent.ConcurrentHashMap<>(16, 0.5F);
++    protected final Map<ObjectiveCriteria, List<Objective>> objectivesByCriteria = new java.util.concurrent.ConcurrentHashMap<>();
++    protected final Map<String, PlayerScores> playerScores = new java.util.concurrent.ConcurrentHashMap<>(16, 0.5F);
++    protected final Map<DisplaySlot, Objective> displayObjectives = new java.util.concurrent.ConcurrentHashMap<>();
++    protected final Map<String, PlayerTeam> teamsByName = new java.util.concurrent.ConcurrentHashMap<>();
++    protected final Map<String, PlayerTeam> teamsByPlayer = new java.util.concurrent.ConcurrentHashMap<>();
++    // TenseiMC end - Object2ObjectOpenHashMap -> ConcurrentHashMap
+ 
+     public @Nullable Objective getObjective(final @Nullable String name) {
++        if (name == null) return null; // TenseiMC - ConcurrentHashMap doesn't accept null keys
+         return this.objectivesByName.get(name);
+     }
+ 
+@@ -49,15 +52,22 @@ public class Scoreboard {
+         final boolean displayAutoUpdate,
+         final @Nullable NumberFormat numberFormat
+     ) {
+-        if (this.objectivesByName.containsKey(name)) {
++        // TenseiMC START - atomic compound op via computeIfAbsent
++        final java.util.concurrent.atomic.AtomicReference<@Nullable Objective> created = new java.util.concurrent.atomic.AtomicReference<>();
++        Objective result = this.objectivesByName.computeIfAbsent(name, n -> {
++            Objective o = new Objective(this, n, criteria, displayName, renderType, displayAutoUpdate, numberFormat);
++            this.objectivesByCriteria
++                    .computeIfAbsent(criteria, k -> new java.util.concurrent.CopyOnWriteArrayList<>())
++                    .add(o);
++            created.set(o);
++            return o;
++        });
++        if (created.get() == null) {
+             throw new IllegalArgumentException("An objective with the name '" + name + "' already exists!");
+-        } else {
+-            Objective objective = new Objective(this, name, criteria, displayName, renderType, displayAutoUpdate, numberFormat);
+-            this.objectivesByCriteria.computeIfAbsent(criteria, k -> Lists.newArrayList()).add(objective);
+-            this.objectivesByName.put(name, objective);
+-            this.onObjectiveAdded(objective);
+-            return objective;
+         }
++        this.onObjectiveAdded(result);
++        return result;
++        // TenseiMC end - atomic compound op via computeIfAbsent
+     }
+ 
+     public final void forAllObjectives(final ObjectiveCriteria criteria, final ScoreHolder name, final Consumer<ScoreAccess> operation) {
+@@ -84,7 +94,11 @@ public class Scoreboard {
+ 
+             @Override
+             public int get() {
+-                return score.value();
++                // TeinMC start - synchronized access to score state
++                synchronized (score) {
++                    return score.value();
++                }
++                // TenseiMC end - synchronized access to score state
+             }
+ 
+             @Override
+@@ -92,20 +106,23 @@ public class Scoreboard {
+                 if (!canModify) {
+                     throw new IllegalStateException("Cannot modify read-only score");
+                 } else {
+-                    boolean hasChanged = requiresSync.isTrue();
+-                    if (objective.displayAutoUpdate()) {
+-                        Component newDisplay = scoreHolder.getDisplayName();
+-                        if (newDisplay != null && !newDisplay.equals(score.display())) {
+-                            score.display(newDisplay);
++                    // TenseiMC start - synchronized compound update on score
++                    boolean hasChanged;
++                    synchronized (score) {
++                        hasChanged = requiresSync.isTrue();
++                        if (objective.displayAutoUpdate()) {
++                            Component newDisplay = scoreHolder.getDisplayName();
++                            if (newDisplay != null && !newDisplay.equals(score.display())) {
++                                score.display(newDisplay);
++                                hasChanged = true;
++                            }
++                        }
++                        if (value != score.value()) {
++                            score.value(value);
+                             hasChanged = true;
+                         }
+                     }
+-
+-                    if (value != score.value()) {
+-                        score.value(value);
+-                        hasChanged = true;
+-                    }
+-
++                    // TenseiMC end - synchronized compound update on score
+                     if (hasChanged) {
+                         this.sendScoreToPlayers();
+                     }
+@@ -114,26 +131,46 @@ public class Scoreboard {
+ 
+             @Override
+             public @Nullable Component display() {
+-                return score.display();
++                // TenseiMC start - synchronized access to score state
++                synchronized (score) {
++                    return score.display();
++                }
++                // TenseiMC end - synchronized access to score state
+             }
+ 
+             @Override
+             public void display(final @Nullable Component display) {
+-                if (requiresSync.isTrue() || !Objects.equals(display, score.display())) {
+-                    score.display(display);
++                // TenseiMC start - synchronized compound update on score
++                boolean changed;
++                synchronized (score) {
++                    changed = requiresSync.isTrue() || !Objects.equals(display, score.display());
++                    if (changed) {
++                        score.display(display);
++                    }
++                }
++                if (changed) {
++                    // TenseiMC end - synchronized compound update on score
+                     this.sendScoreToPlayers();
+                 }
+             }
+ 
+             @Override
+             public void numberFormatOverride(final @Nullable NumberFormat numberFormat) {
+-                score.numberFormat(numberFormat);
++                // TenseiMC start - synchronized compound update on score
++                synchronized (score) {
++                    score.numberFormat(numberFormat);
++                }
++                // TenseiMC end - synchronized compound update on score
+                 this.sendScoreToPlayers();
+             }
+ 
+             @Override
+             public boolean locked() {
+-                return score.isLocked();
++                // TenseiMC start - synchronized access to score state
++                synchronized (score) {
++                    return score.isLocked();
++                }
++                // TenseiMC end - synchronized access to score state
+             }
+ 
+             @Override
+@@ -147,8 +184,14 @@ public class Scoreboard {
+             }
+ 
+             private void setLocked(final boolean locked) {
+-                score.setLocked(locked);
+-                if (requiresSync.isTrue()) {
++                // TenseiMC start - synchronized compound update on score
++                boolean shouldSync;
++                synchronized (score) {
++                    score.setLocked(locked);
++                    shouldSync = requiresSync.isTrue();
++                }
++                if (shouldSync) {
++                    // TenseiMC end - synchronized compound update on score
+                     this.sendScoreToPlayers();
+                 }
+ 
+@@ -172,7 +215,11 @@ public class Scoreboard {
+         this.playerScores.forEach((player, scores) -> {
+             Score score = scores.get(objective);
+             if (score != null) {
+-                result.add(new PlayerScoreEntry(player, score.value(), score.display(), score.numberFormat()));
++                // TenseiMC start - synchronized access to score state
++                synchronized (score) {
++                    result.add(new PlayerScoreEntry(player, score.value(), score.display(), score.numberFormat()));
++                }
++                // TenseiMC end - synchronized access to score state
+             }
+         });
+         return result;
+@@ -198,18 +245,23 @@ public class Scoreboard {
+     }
+ 
+     public void resetSinglePlayerScore(final ScoreHolder player, final Objective objective) {
+-        PlayerScores scores = this.playerScores.get(player.getScoreboardName());
+-        if (scores != null) {
+-            boolean hasRemoved = scores.remove(objective);
++        // TenseiMC start - atomic compound op
++        final java.util.concurrent.atomic.AtomicBoolean scoreWasRemoved = new java.util.concurrent.atomic.AtomicBoolean(false);
++        final java.util.concurrent.atomic.AtomicBoolean playerWasRemoved = new java.util.concurrent.atomic.AtomicBoolean(false);
++        this.playerScores.computeIfPresent(player.getScoreboardName(), (key, scores) -> {
++            scoreWasRemoved.set(scores.remove(objective));
+             if (!scores.hasScores()) {
+-                PlayerScores removedPlayer = this.playerScores.remove(player.getScoreboardName());
+-                if (removedPlayer != null) {
+-                    this.onPlayerRemoved(player);
+-                }
+-            } else if (hasRemoved) {
+-                this.onPlayerScoreRemoved(player, objective);
++                playerWasRemoved.set(true);
++                return null;
+             }
++            return scores;
++        });
++        if (playerWasRemoved.get()) {
++            this.onPlayerRemoved(player);
++        } else if (scoreWasRemoved.get()) {
++            this.onPlayerScoreRemoved(player, objective);
+         }
++        // TenseiMC end - atomic compound op
+     }
+ 
+     public Object2IntMap<Objective> listPlayerScores(final ScoreHolder player) {
+@@ -218,12 +270,14 @@ public class Scoreboard {
+     }
+ 
+     public void removeObjective(final Objective objective) {
+-        this.objectivesByName.remove(objective.getName());
++        // TenseiMC start - atomic compound op
++        Objective removed = this.objectivesByName.remove(objective.getName());
++        if (removed == null) return;
+ 
+         for (DisplaySlot value : DisplaySlot.values()) {
+-            if (this.getDisplayObjective(value) == objective) {
+-                this.setDisplayObjective(value, null);
+-            }
++            this.displayObjectives.computeIfPresent(value, (slot, current) ->
++                    current == objective ? null : current);
++            // TenseiMC end - atomic compound op
+         }
+ 
+         List<Objective> objectives = this.objectivesByCriteria.get(objective.getCriteria());
+@@ -239,66 +293,98 @@ public class Scoreboard {
+     }
+ 
+     public void setDisplayObjective(final DisplaySlot slot, final @Nullable Objective objective) {
++        // TenseiMC start - null-safe for ConcurrentHashMap
++        if (objective == null) {
++            this.displayObjectives.remove(slot);
++            return;
++        }
++        // TenseiMC end - null-safe for ConcurrentHashMap
+         this.displayObjectives.put(slot, objective);
+     }
+ 
+-    public @Nullable Objective getDisplayObjective(final DisplaySlot slot) {
++    public @Nullable Objective getDisplayObjective(final @Nullable DisplaySlot slot) { // TenseiMC - null-safe for ConcurrentHashMap
++        if (slot == null) return null; // TenseiMC - null-safe for ConcurrentHashMap
+         return this.displayObjectives.get(slot);
+     }
+ 
+-    public @Nullable PlayerTeam getPlayerTeam(final String name) {
++    public @Nullable PlayerTeam getPlayerTeam(final @Nullable String name) { // TenseiMC - null-safe for ConcurrentHashMap
++        if (name == null) return null;
+         return this.teamsByName.get(name);
+     }
+ 
+     public PlayerTeam addPlayerTeam(final String name) {
+-        PlayerTeam team = this.getPlayerTeam(name);
+-        if (team != null) {
++        // TenseiMC start - atomic compound op
++        final java.util.concurrent.atomic.AtomicBoolean created = new java.util.concurrent.atomic.AtomicBoolean(false);
++        PlayerTeam team = this.teamsByName.computeIfAbsent(name, n -> {
++            created.set(true);
++            return new PlayerTeam(this, n);
++        });
++        if (!created.get()) {
+             LOGGER.warn("Requested creation of existing team '{}'", name);
+             return team;
+-        } else {
+-            team = new PlayerTeam(this, name);
+-            this.teamsByName.put(name, team);
+-            this.onTeamAdded(team);
+-            return team;
+         }
++        this.onTeamAdded(team);
++        return team;
++        // TenseiMC end - atomic compound op
+     }
+ 
+     public void removePlayerTeam(final PlayerTeam team) {
+-        this.teamsByName.remove(team.getName());
++        // TenseiMC start - atomic compound op
++        PlayerTeam removed = this.teamsByName.remove(team.getName());
++        if (removed == null) return;
+ 
+-        for (String player : team.getPlayers()) {
+-            this.teamsByPlayer.remove(player);
++        List<String> players = new ArrayList<>(team.getPlayers());
++        for (String player : players) {
++            this.teamsByPlayer.remove(player, team);
+         }
++        // TenseiMC end - atomic compound op
+ 
+         this.onTeamRemoved(team);
+     }
+ 
+     public boolean addPlayerToTeam(final String player, final PlayerTeam team) {
+-        if (this.getPlayersTeam(player) != null) {
+-            this.removePlayerFromTeam(player);
+-        }
+-
+-        this.teamsByPlayer.put(player, team);
+-        return team.getPlayers().add(player);
++        // TenseiMC start - atomic compound op via compute()
++        final java.util.concurrent.atomic.AtomicBoolean added = new java.util.concurrent.atomic.AtomicBoolean(false);
++        this.teamsByPlayer.compute(player, (key, currentTeam) -> {
++            if (currentTeam != null && currentTeam != team) {
++                currentTeam.getPlayers().remove(player);
++            }
++            if (currentTeam != team) {
++                added.set(team.getPlayers().add(player));
++            }
++            return team;
++        });
++        return added.get();
++        // TenseiMC end - atomic compound op via compute()
+     }
+ 
+     public boolean removePlayerFromTeam(final String player) {
+-        PlayerTeam team = this.getPlayersTeam(player);
+-        if (team != null) {
+-            this.removePlayerFromTeam(player, team);
+-            return true;
+-        } else {
+-            return false;
+-        }
++        // TenseiMC start - atomic compound op
++        final java.util.concurrent.atomic.AtomicBoolean removed = new java.util.concurrent.atomic.AtomicBoolean(false);
++        this.teamsByPlayer.computeIfPresent(player, (key, currentTeam) -> {
++            currentTeam.getPlayers().remove(player);
++            removed.set(true);
++            return null;
++        });
++        return removed.get();
++        // TenseiMC end - atomic compound op
+     }
+ 
+     public void removePlayerFromTeam(final String player, final PlayerTeam team) {
+-        if (this.getPlayersTeam(player) != team) {
++        // TenseiMC start - atomic compound op
++        final java.util.concurrent.atomic.AtomicBoolean mismatch = new java.util.concurrent.atomic.AtomicBoolean(false);
++        this.teamsByPlayer.computeIfPresent(player, (key, currentTeam) -> {
++            if (currentTeam != team) {
++                mismatch.set(true);
++                return currentTeam; // don't remove
++            }
++            currentTeam.getPlayers().remove(player);
++            return null;
++        });
++        if (mismatch.get()) {
+             throw new IllegalStateException("Player is either on another team or not on any team. Cannot remove from team '" + team.getName() + "'.");
+-        } else {
+-            this.teamsByPlayer.remove(player);
+-            team.getPlayers().remove(player);
+         }
++        // TenseiMC end - atomic compound op
+     }
+ 
+     public Collection<String> getTeamNames() {
+@@ -309,7 +395,8 @@ public class Scoreboard {
+         return this.teamsByName.values();
+     }
+ 
+-    public @Nullable PlayerTeam getPlayersTeam(final String name) {
++    public @Nullable PlayerTeam getPlayersTeam(final @Nullable String name) {
++        if (name == null) return null; // TenseiMC - null-safe for ConcurrentHashMap
+         return this.teamsByPlayer.get(name);
+     }
+ 
+diff --git a/net/minecraft/world/scores/ScoreboardSaveData.java b/net/minecraft/world/scores/ScoreboardSaveData.java
+index 9f8497761fedb78ad2ce86ab704772a3258958b9..1f033bccbd90a7954034a152b88f2064380fac08 100644
+--- a/net/minecraft/world/scores/ScoreboardSaveData.java
++++ b/net/minecraft/world/scores/ScoreboardSaveData.java
+@@ -18,7 +18,7 @@ public class ScoreboardSaveData extends SavedData {
+     );
+     private ScoreboardSaveData.Packed data;
+ 
+-    private ScoreboardSaveData() {
++    protected ScoreboardSaveData() { // TenseiMC - private -> protected
+         this(ScoreboardSaveData.Packed.EMPTY);
+     }
+ 
+@@ -30,11 +30,12 @@ public class ScoreboardSaveData extends SavedData {
+         return this.data;
+     }
+ 
+-    public void setData(final ScoreboardSaveData.Packed data) {
++    public ScoreboardSaveData setData(final ScoreboardSaveData.Packed data) { // TenseiMC - void -> ScoreboardSaveData
+         if (!data.equals(this.data)) {
+             this.data = data;
+             this.setDirty();
+         }
++        return this; // TenseiMC - return this for chaining
+     }
+ 
+     public record Packed(
