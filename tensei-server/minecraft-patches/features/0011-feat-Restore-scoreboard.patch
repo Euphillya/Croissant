@@ -29,7 +29,7 @@ index a121b8041632791e8ece54c3141f68a24b3744a4..e684fab4bb97fde36eb4da4b46ca3318
          TellRawCommand.register(this.dispatcher, context);
          //TestCommand.register(this.dispatcher, context); // Folia - region threading
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index fd2e69049c1b92cf1a5f37aba73ec8d01b7e13a9..c12a7e50ab0e9046e585ff48d67d3aa0cdec6fc3 100644
+index 697658f39d90bcbeeae15418d14690622749b669..55613e8cc085c99ffd6d8d3b045c28976f6f5625 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -757,7 +757,15 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
