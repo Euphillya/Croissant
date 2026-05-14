@@ -91,6 +91,31 @@ subprojects {
             events(TestLogEvent.STANDARD_OUT)
         }
     }
+
+    extensions.configure<PublishingExtension> {
+        repositories {
+            maven {
+                name = "euphyllia"
+
+                val releasesRepoUrl =
+                    uri("https://repo.euphyllia.moe/repository/maven-releases/")
+
+                val snapshotsRepoUrl =
+                    uri("https://repo.euphyllia.moe/repository/maven-snapshots/")
+
+                url = if (project.version.toString().endsWith("SNAPSHOT")) {
+                    snapshotsRepoUrl
+                } else {
+                    releasesRepoUrl
+                }
+
+                credentials {
+                    username = System.getenv("NEXUS_USERNAME") ?: ""
+                    password = System.getenv("NEXUS_PASSWORD") ?: ""
+                }
+            }
+        }
+    }
 }
 
 // DEPRECATED; possibly for future removal
