@@ -2,6 +2,7 @@ package fr.euphyllia.tenseimc.configuration;
 
 import io.papermc.paper.configuration.Configuration;
 import io.papermc.paper.configuration.ConfigurationPart;
+import net.minecraft.world.level.block.NetherWartBlock;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
 import org.spongepowered.configurate.objectmapping.meta.Setting;
 
@@ -154,32 +155,17 @@ public class TenseiConfigWorld extends ConfigurationPart {
 
         public SugarCane sugarCane;
         public class SugarCane extends ConfigurationPart {
-            @Comment("Allow bonemeal to be used on sugar cane")
-            public boolean bonemealEnabled = false;
-
             @Comment("Probability (0.0 - 1.0) that bonemeal successfully grows the sugar cane by one block.")
             public float bonemealSuccessChance = 1.0F;
-
-            @Comment("If true, bonemeal always grows from the top of the sugar cane regardless of which block was clicked.")
-            public boolean bonemealTargetTop = false;
-
-            @Comment("Show green happy particles and sound when bonemeal is used on sugar cane.")
-            public boolean bonemealParticles = false;
         }
 
         public NetherWart netherWart;
         public class NetherWart extends ConfigurationPart {
-            @Comment("Allow bonemeal to be used on nether wart.")
-            public boolean bonemealEnabled = false;
-
             @Comment("Probability (0.0 - 1.0) that bonemeal successfully grows the nether wart.")
             public float bonemealSuccessChance = 1.0F;
 
-            @Comment("Number of growth stages advanced per bonemeal use.")
-            public int bonemealGrowAmount = 1;
-
-            @Comment("Show green happy particles when bonemeal is used on nether wart.")
-            public boolean bonemealParticles = true;
+            @Comment("Number of growth stages advanced per bonemeal use. Set to -1 for random (1-3).")
+            public int bonemealGrowAmount = -1;
         }
 
         public Beehive beehive;

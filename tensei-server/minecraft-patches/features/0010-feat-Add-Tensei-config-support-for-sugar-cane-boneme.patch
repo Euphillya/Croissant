@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Thu, 21 May 2026 15:39:15 +0200
+Subject: [PATCH] feat: Add Tensei config support for sugar cane bonemeal
+
+
+diff --git a/net/minecraft/world/level/block/SugarCaneBlock.java b/net/minecraft/world/level/block/SugarCaneBlock.java
+index ed4a669022ccc3b3722cb1bedf4b9668872991d7..79ed44866512298c727341fde540e0e487d940a2 100644
+--- a/net/minecraft/world/level/block/SugarCaneBlock.java
++++ b/net/minecraft/world/level/block/SugarCaneBlock.java
+@@ -137,7 +137,11 @@ public class SugarCaneBlock extends Block implements BonemealableBlock { // Canv
+         final BlockPos pos,
+         final BlockState state
+     ) {
+-        return level.canvasConfig().farming.sugarCaneBonemealable;
++        if (level.canvasConfig().farming.sugarCaneBonemealable) {
++            if (!(level instanceof ServerLevel serverLevel)) return true;
++            return random.nextFloat() < serverLevel.tensei.blocks.sugarCane.bonemealSuccessChance;
++        }
++        return false;
+     }
+ 
+     @Override
