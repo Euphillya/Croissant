@@ -3,7 +3,6 @@ package fr.euphyllia.tenseimc.configuration;
 import com.google.common.base.Suppliers;
 import io.papermc.paper.configuration.ConfigurationPart;
 import io.papermc.paper.configuration.Configurations;
-import io.papermc.paper.configuration.PaperConfigurations;
 import io.papermc.paper.configuration.mapping.Definition;
 import io.papermc.paper.configuration.mapping.FieldProcessor;
 import io.papermc.paper.configuration.mapping.InnerClassFieldDiscoverer;

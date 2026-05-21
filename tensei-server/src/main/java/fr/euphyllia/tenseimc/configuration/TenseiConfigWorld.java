@@ -2,7 +2,6 @@ package fr.euphyllia.tenseimc.configuration;
 
 import io.papermc.paper.configuration.Configuration;
 import io.papermc.paper.configuration.ConfigurationPart;
-import net.minecraft.world.level.block.NetherWartBlock;
 import org.spongepowered.configurate.objectmapping.meta.Comment;
 import org.spongepowered.configurate.objectmapping.meta.Setting;
 
