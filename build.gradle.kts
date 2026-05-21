@@ -9,6 +9,8 @@ plugins {
 }
 
 val paperMavenPublicUrl = "https://repo.papermc.io/repository/maven-public/"
+val canvasMavenPublicUrl = "https://maven.canvasmc.io/public/"
+val euphylliaMavenPublicUrl = "https://repo.euphyllia.moe/repository/maven-public/"
 
 paperweight {
     // This controls the patch filtering setting
@@ -66,6 +68,8 @@ subprojects {
     repositories {
         mavenCentral()
         maven(paperMavenPublicUrl)
+        maven(canvasMavenPublicUrl)
+        maven(euphylliaMavenPublicUrl)
     }
 
     tasks.withType<AbstractArchiveTask>().configureEach {
