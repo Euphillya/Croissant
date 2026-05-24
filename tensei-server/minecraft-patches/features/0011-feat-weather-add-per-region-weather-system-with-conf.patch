@@ -1,14 +1,15 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
 Date: Sun, 24 May 2026 13:34:13 +0200
-Subject: [PATCH] feat: Support Weather Per Region
+Subject: [PATCH] feat(weather): add per-region weather system with
+ configurable merge strategy
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..8941f94a1fef2b19195904b0d1e03d13cad18619 100644
+index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..0cb0299832aa42ac389606b38f7942c73a008ca4 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -160,6 +160,17 @@ public final class RegionizedWorldData {
+@@ -160,6 +160,31 @@ public final class RegionizedWorldData {
              for (final ChunkHolder chunkHolder : from.chunkHoldersToBroadcast) {
                  into.chunkHoldersToBroadcast.add(chunkHolder);
              }
@@ -18,15 +19,29 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..8941f94a1fef2b19195904b0d1e03d13
 +                    if (into.weatherRegional == null) {
 +                        into.weatherRegional = new RegionalWeatherState();
 +                    }
++                    final var strategy = from.world.tensei.weather.mergeStrategy;
 +                    if (!into.weatherRegional.initialized && from.weatherRegional.initialized) {
 +                        copyWeather(from.weatherRegional, into.weatherRegional);
++                    } else if (into.weatherRegional.initialized && from.weatherRegional.initialized) {
++                        switch (strategy) {
++                            case MOST_PLAYERS -> {
++                                if (from.getPlayerCount() > into.getPlayerCount()) {
++                                    copyWeather(from.weatherRegional, into.weatherRegional);
++                                }
++                            }
++                            case WEATHER_PRIORITY -> {
++                                if (weatherWeight(from.weatherRegional, from.world) > weatherWeight(into.weatherRegional, into.world)) {
++                                    copyWeather(from.weatherRegional, into.weatherRegional);
++                                }
++                            }
++                        }
 +                    }
 +                }
 +            }
          }
  
          @Override
-@@ -336,6 +347,15 @@ public final class RegionizedWorldData {
+@@ -336,6 +361,15 @@ public final class RegionizedWorldData {
                      into.chunkHoldersToBroadcast.add(chunkHolder);
                  }
              }
@@ -42,7 +57,7 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..8941f94a1fef2b19195904b0d1e03d13
          }
      };
  
-@@ -797,4 +817,40 @@ public final class RegionizedWorldData {
+@@ -797,4 +831,47 @@ public final class RegionizedWorldData {
      public int getChunkCount() {
          return this.chunks.size();
      }
@@ -79,12 +94,19 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..8941f94a1fef2b19195904b0d1e03d13
 +        dst.initialized = src.initialized;
 +    }
 +
++    private static int weatherWeight(final RegionalWeatherState st, final ServerLevel level) {
++        final var weights = level.tensei.weather.weatherWeights;
++        if (st.thundering) return weights.thunder;
++        if (st.raining)    return weights.rain;
++        return weights.clear;
++    }
++
 +    public transient boolean _wasRaining;
 +    public transient float _oldRainLevel;
 +    public transient float _oldThunderLevel;
  }
 diff --git a/net/minecraft/server/commands/WeatherCommand.java b/net/minecraft/server/commands/WeatherCommand.java
-index d0826acd4de70a7030d408faeb42903900bbbb74..44ad876e5ccf44066ec28b073d226a820f494a08 100644
+index d0826acd4de70a7030d408faeb42903900bbbb74..a2f1d3c014d897826569c06911b436d76adae9e4 100644
 --- a/net/minecraft/server/commands/WeatherCommand.java
 +++ b/net/minecraft/server/commands/WeatherCommand.java
 @@ -40,6 +40,10 @@ public class WeatherCommand {
