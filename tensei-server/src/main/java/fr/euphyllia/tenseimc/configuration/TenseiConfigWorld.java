@@ -197,7 +197,7 @@ public class TenseiConfigWorld extends ConfigurationPart {
         public String commandGetRain = "The weather is rainy";
         public String commandGetThunder = "The weather is thundering";
 
-        @Comment("Strategy used when two regions merge.\nValues: KEEP_INTO, MOST_PLAYERS, WEATHER_PRIORITY\nDefault: KEEP_INTO")
+        @Comment("Strategy used when two regions merge.\nValues: KEEP_INTO, MOST_PLAYERS, MOST_CHUNKS, WEATHER_PRIORITY\nDefault: KEEP_INTO")
         public MergeStrategy mergeStrategy = MergeStrategy.KEEP_INTO;
 
         @Comment("Weight of each weather type for WEATHER_PRIORITY strategy.\nHigher = wins the merge.")
@@ -212,6 +212,7 @@ public class TenseiConfigWorld extends ConfigurationPart {
         public enum MergeStrategy {
             KEEP_INTO,
             MOST_PLAYERS,
+            MOST_CHUNKS,
             WEATHER_PRIORITY
         }
     }

@@ -6,10 +6,10 @@ Subject: [PATCH] feat(weather): add per-region weather system with
 
 
 diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..0cb0299832aa42ac389606b38f7942c73a008ca4 100644
+index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..94fe82d71b853d961454afffc67b6e84eb898d48 100644
 --- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
 +++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
-@@ -160,6 +160,31 @@ public final class RegionizedWorldData {
+@@ -160,6 +160,36 @@ public final class RegionizedWorldData {
              for (final ChunkHolder chunkHolder : from.chunkHoldersToBroadcast) {
                  into.chunkHoldersToBroadcast.add(chunkHolder);
              }
@@ -34,6 +34,11 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..0cb0299832aa42ac389606b38f7942c7
 +                                    copyWeather(from.weatherRegional, into.weatherRegional);
 +                                }
 +                            }
++                            case MOST_CHUNKS -> {
++                                if (from.getChunkCount() > into.getChunkCount()) {
++                                    copyWeather(from.weatherRegional, into.weatherRegional);
++                                }
++                            }
 +                        }
 +                    }
 +                }
@@ -41,7 +46,7 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..0cb0299832aa42ac389606b38f7942c7
          }
  
          @Override
-@@ -336,6 +361,15 @@ public final class RegionizedWorldData {
+@@ -336,6 +366,15 @@ public final class RegionizedWorldData {
                      into.chunkHoldersToBroadcast.add(chunkHolder);
                  }
              }
@@ -57,7 +62,7 @@ index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..0cb0299832aa42ac389606b38f7942c7
          }
      };
  
-@@ -797,4 +831,47 @@ public final class RegionizedWorldData {
+@@ -797,4 +836,47 @@ public final class RegionizedWorldData {
      public int getChunkCount() {
          return this.chunks.size();
      }
