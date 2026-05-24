@@ -188,4 +188,10 @@ public class TenseiConfigWorld extends ConfigurationPart {
             public int doubleHoneyIncreaseChance = 100;
         }
     }
+
+    public Weather weather;
+    public class Weather extends ConfigurationPart {
+        @Comment("Enabled weather per region.\nDefault: false")
+        public boolean perRegion = false;
+    }
 }

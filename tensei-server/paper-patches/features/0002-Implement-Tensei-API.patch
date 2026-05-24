@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Sun, 24 May 2026 13:41:30 +0200
+Subject: [PATCH] Implement Tensei API
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 391511adbcc32ffca7f4c766e0324a2716b40e78..ef7c7280a9d87910e7cd79ad40cb4510f806c818 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -421,6 +421,7 @@ public final class CraftServer implements Server {
+         this.serverLinks = new CraftServerLinks(console);
+ 
+         Bukkit.setServer(this);
++        fr.euphyllia.tenseimc.Tensei.setup(new fr.euphyllia.tenseimc.TenseiServerImpl());
+         // Paper start
+         this.commandMap = new CraftCommandMap(this);
+         this.pluginManager = new SimplePluginManager(this, commandMap);

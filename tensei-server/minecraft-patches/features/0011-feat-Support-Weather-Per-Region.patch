@@ -1,0 +1,486 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Euphyllia Bierque <bierque.euphyllia@gmail.com>
+Date: Sun, 24 May 2026 13:34:13 +0200
+Subject: [PATCH] feat: Support Weather Per Region
+
+
+diff --git a/io/papermc/paper/threadedregions/RegionizedWorldData.java b/io/papermc/paper/threadedregions/RegionizedWorldData.java
+index 9fa7edf7a5dcedd6361aa49bbdbc1f65251431e9..8941f94a1fef2b19195904b0d1e03d13cad18619 100644
+--- a/io/papermc/paper/threadedregions/RegionizedWorldData.java
++++ b/io/papermc/paper/threadedregions/RegionizedWorldData.java
+@@ -160,6 +160,17 @@ public final class RegionizedWorldData {
+             for (final ChunkHolder chunkHolder : from.chunkHoldersToBroadcast) {
+                 into.chunkHoldersToBroadcast.add(chunkHolder);
+             }
++            // weather
++            if (from.world.tensei.weather.perRegion) {
++                if (from.weatherRegional != null) {
++                    if (into.weatherRegional == null) {
++                        into.weatherRegional = new RegionalWeatherState();
++                    }
++                    if (!into.weatherRegional.initialized && from.weatherRegional.initialized) {
++                        copyWeather(from.weatherRegional, into.weatherRegional);
++                    }
++                }
++            }
+         }
+ 
+         @Override
+@@ -336,6 +347,15 @@ public final class RegionizedWorldData {
+                     into.chunkHoldersToBroadcast.add(chunkHolder);
+                 }
+             }
++            // weather
++            if (from.world.tensei.weather.perRegion) {
++                for (final RegionizedWorldData regionizedWorldData : dataSet) {
++                    if (regionizedWorldData.weatherRegional == null) {
++                        regionizedWorldData.weatherRegional = new RegionalWeatherState();
++                    }
++                    copyWeather(from.weatherRegional, regionizedWorldData.weatherRegional);
++                }
++            }
+         }
+     };
+ 
+@@ -797,4 +817,40 @@ public final class RegionizedWorldData {
+     public int getChunkCount() {
+         return this.chunks.size();
+     }
++
++    public RegionalWeatherState weatherRegional = new RegionalWeatherState();
++    public static class RegionalWeatherState {
++        public int clearTime;
++        public int rainTime;
++        public int thunderTime;
++
++        public boolean raining;
++        public boolean thundering;
++
++        public float rainLevel;     // 0..1
++        public float thunderLevel;  // 0..1
++
++        public long regionSeed;
++        public boolean initialized;
++
++        public float oRainLevel;
++        public float oThunderLevel;
++    }
++
++    private static void copyWeather(final RegionalWeatherState src, final RegionalWeatherState dst) {
++        if (src == null || dst == null) return;
++        dst.clearTime = src.clearTime;
++        dst.rainTime = src.rainTime;
++        dst.thunderTime = src.thunderTime;
++        dst.raining = src.raining;
++        dst.thundering = src.thundering;
++        dst.rainLevel = src.rainLevel;
++        dst.thunderLevel = src.thunderLevel;
++        dst.regionSeed = src.regionSeed;
++        dst.initialized = src.initialized;
++    }
++
++    public transient boolean _wasRaining;
++    public transient float _oldRainLevel;
++    public transient float _oldThunderLevel;
+ }
+diff --git a/net/minecraft/server/commands/WeatherCommand.java b/net/minecraft/server/commands/WeatherCommand.java
+index d0826acd4de70a7030d408faeb42903900bbbb74..44ad876e5ccf44066ec28b073d226a820f494a08 100644
+--- a/net/minecraft/server/commands/WeatherCommand.java
++++ b/net/minecraft/server/commands/WeatherCommand.java
+@@ -40,6 +40,10 @@ public class WeatherCommand {
+                                 .executes(c -> setThunder(c.getSource(), IntegerArgumentType.getInteger(c, "duration")))
+                         )
+                 )
++                .then(
++                      Commands.literal("get")
++                             .executes(c -> getWeather(c.getSource()))
++                )
+         );
+     }
+ 
+@@ -48,26 +52,146 @@ public class WeatherCommand {
+     }
+ 
+     private static int setClear(final CommandSourceStack source, final int duration) {
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> { // Folia - region threading
+-        source.getServer().setWeatherParameters(source.getLevel(), getDuration(source, duration, ServerLevel.RAIN_DELAY), 0, false, false); // CraftBukkit - SPIGOT-7680: per-world
+-        source.sendSuccess(() -> Component.translatable("commands.weather.set.clear"), true);
+-        }); // Folia - region threading
++        final int durationTime = getDuration(source, duration, ServerLevel.RAIN_DELAY);
++        changeWeatherInRegionOrGlobal(source, () -> {
++            final ServerLevel level = source.getLevel();
++            final var player = source.getPlayer();
++
++            if (player != null) {
++                final var worldData = level.getCurrentWorldData();
++                final var st = worldData.weatherRegional;
++                if (st != null) {
++                    st.initialized = true;
++                    st.regionSeed = level.getSeed() ^ worldData.regionData.id;
++
++                    st.raining = false;
++                    st.thundering = false;
++
++                    st.clearTime = duration;
++                    st.rainTime = 0;
++                    st.thunderTime = 0;
++
++                    st.rainLevel = 0.0F;
++                    st.thunderLevel = 0.0F;
++                }
++            } else {
++                source.getServer().setWeatherParameters(source.getLevel(), durationTime, 0, false, false); // CraftBukkit - SPIGOT-7680: per-world
++            }
++            source.sendSuccess(() -> Component.translatable("commands.weather.set.clear"), false);
++        });
+         return duration;
+     }
+ 
+     private static int setRain(final CommandSourceStack source, final int duration) {
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> { // Folia - region threading
+-        source.getServer().setWeatherParameters(source.getLevel(), 0, getDuration(source, duration, ServerLevel.RAIN_DURATION), true, false); // CraftBukkit - SPIGOT-7680: per-world
+-        source.sendSuccess(() -> Component.translatable("commands.weather.set.rain"), true);
+-        }); // Folia - region threading
++        final int durationTime = getDuration(source, duration, ServerLevel.RAIN_DURATION);
++        changeWeatherInRegionOrGlobal(source, () -> {
++            final ServerLevel level = source.getLevel();
++            final var player = source.getPlayer();
++
++            if (player != null) {
++                final var worldData = level.getCurrentWorldData();
++                final var st = worldData.weatherRegional;
++                if (st != null) {
++                    st.initialized = true;
++                    st.regionSeed = level.getSeed() ^ worldData.regionData.id;
++
++                    st.raining = true;
++                    st.thundering = false;
++
++                    st.rainTime = duration;
++                    st.clearTime = 0;
++                    st.thunderTime = 0;
++
++                    st.rainLevel = 1.0F;
++                    st.thunderLevel = 0.0F;
++                }
++            } else {
++                source.getServer().setWeatherParameters(source.getLevel(), 0, durationTime, true, false); // CraftBukkit - SPIGOT-7680: per-world
++            }
++
++            source.sendSuccess(() -> Component.translatable("commands.weather.set.rain"), false);
++        });
+         return duration;
+     }
+ 
+     private static int setThunder(final CommandSourceStack source, final int duration) {
+-        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(() -> { // Folia - region threading
+-        source.getServer().setWeatherParameters(source.getLevel(), 0, getDuration(source, duration, ServerLevel.THUNDER_DURATION), true, true); // CraftBukkit - SPIGOT-7680: per-world
+-        source.sendSuccess(() -> Component.translatable("commands.weather.set.thunder"), true);
+-        }); // Folia - region threading
++        final int durationTime = getDuration(source, duration, ServerLevel.THUNDER_DURATION);
++        changeWeatherInRegionOrGlobal(source, () -> {
++            final ServerLevel level = source.getLevel();
++            final var player = source.getPlayer();
++
++            if (player != null) {
++                final var worldData = level.getCurrentWorldData();
++                final var st = worldData.weatherRegional;
++                if (st != null) {
++                    st.initialized = true;
++                    st.regionSeed = level.getSeed() ^ worldData.regionData.id;
++
++                    st.raining = true;
++                    st.thundering = true;
++
++                    st.rainTime = duration;
++                    st.thunderTime = duration;
++                    st.clearTime = 0;
++
++                    st.rainLevel = 1.0F;
++                    st.thunderLevel = 1.0F;
++                }
++            } else {
++                source.getServer().setWeatherParameters(source.getLevel(), 0, durationTime, true, true); // CraftBukkit - SPIGOT-7680: per-world
++            }
++
++            source.sendSuccess(() -> Component.translatable("commands.weather.set.thunder"), false);
++        });
+         return duration;
+     }
++
++    private static int getWeather(final CommandSourceStack source) {
++        final ServerLevel level = source.getLevel();
++        final var player = source.getPlayer();
++
++        if (level.tensei.weather.perRegion && player != null) {
++            final var worldData = level.getCurrentWorldData();
++            final var st = worldData.weatherRegional;
++
++            if (st != null && st.initialized) {
++                if (st.thundering) {
++                    source.sendSuccess(() -> Component.translatable("commands.weather.get.thunder"), false);
++                    return 2;
++                } else if (st.raining) {
++                    source.sendSuccess(() -> Component.translatable("commands.weather.get.rain"), false);
++                    return 1;
++                } else {
++                    source.sendSuccess(() -> Component.translatable("commands.weather.get.clear"), false);
++                    return 0;
++                }
++            }
++        }
++
++        if (level.isThundering()) {
++            source.sendSuccess(() -> Component.translatable("commands.weather.get.thunder"), false);
++            return 2;
++        } else if (level.isRaining()) {
++            source.sendSuccess(() -> Component.translatable("commands.weather.get.rain"), false);
++            return 1;
++        } else {
++            source.sendSuccess(() -> Component.translatable("commands.weather.get.clear"), false);
++            return 0;
++        }
++    }
++
++    private static void changeWeatherInRegionOrGlobal(CommandSourceStack source, Runnable run) {
++        final ServerLevel level = source.getLevel();
++        if (level.tensei.weather.perRegion) {
++            final var player = source.getPlayer();
++            if (player != null) {
++                final int cx = player.chunkPosition().x();
++                final int cz = player.chunkPosition().z();
++
++                io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueChunkTask(level, cx, cz, run);
++                return;
++            }
++        }
++        io.papermc.paper.threadedregions.RegionizedServer.getInstance().addTask(run);
++    }
+ }
+diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
+index 0e5d6bd6c6ed57c2832a5f3df7eeddd50613c5f2..802f950442d49ec9653a50a54ecaae91e82f12f5 100644
+--- a/net/minecraft/server/level/ServerChunkCache.java
++++ b/net/minecraft/server/level/ServerChunkCache.java
+@@ -561,6 +561,31 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+             spawnCookie = NaturalSpawner.createState(chunkCount, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false, regionizedWorldData); // Folia - region threading - note: function only cares about loaded entities, doesn't need all // Canvas - optimize natural spawning
+         }
+         // Paper end - Optional per player mob spawns
++        if (this.level.tensei.weather.perRegion) {
++            final var st = regionizedWorldData.weatherRegional;
++            if (st != null && st.initialized) {
++                final boolean wasRaining = regionizedWorldData._wasRaining;
++                final float oldRainLevel = regionizedWorldData._oldRainLevel;
++                final float oldThunderLevel = regionizedWorldData._oldThunderLevel;
++                for (net.minecraft.server.level.ServerPlayer player : regionizedWorldData.getLocalPlayers()) {
++                    if (player.level() == this.level) {
++                        player.tickWeather();
++                    }
++                }
++                if (wasRaining != st.raining) {
++                    for (net.minecraft.server.level.ServerPlayer player : regionizedWorldData.getLocalPlayers()) {
++                        if (player.level() == this.level) {
++                            player.setPlayerWeather((!wasRaining ? org.bukkit.WeatherType.DOWNFALL : org.bukkit.WeatherType.CLEAR), false);
++                        }
++                    }
++                }
++                for (net.minecraft.server.level.ServerPlayer player : regionizedWorldData.getLocalPlayers()) {
++                    if (player.level() == this.level) {
++                        player.updateWeather(oldRainLevel, st.rainLevel, oldThunderLevel, st.thunderLevel);
++                    }
++                }
++            }
++        }
+         regionizedWorldData.lastSpawnState = spawnCookie; // Folia - region threading
+         boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
+         int tickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
+diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
+index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43a0a77cce 100644
+--- a/net/minecraft/server/level/ServerLevel.java
++++ b/net/minecraft/server/level/ServerLevel.java
+@@ -889,6 +889,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+         return previous;
+     }
+ 
++    private final fr.euphyllia.tenseimc.world.weather.WeatherServer weatherServer = new fr.euphyllia.tenseimc.world.weather.WeatherServer();
+     public void tick(BooleanSupplier haveTime, final io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
+         final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = this.getCurrentWorldData(); // Folia - regionised ticking
+         regionizedWorldData.setHandlingTick(true); // Folia - regionised ticking
+@@ -910,6 +911,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+             for (WorldBorder worldBorder : worldBorders) {
+                 worldBorder.tick();
+             }
++            if (region.world.tensei.weather.perRegion) {
++                final var st0 = regionizedWorldData.weatherRegional;
++                if (st0 != null && st0.initialized) {
++                    regionizedWorldData._wasRaining = st0.raining;
++                    regionizedWorldData._oldThunderLevel = st0.thunderLevel;
++                    regionizedWorldData._oldRainLevel = st0.rainLevel;
++                }
++                weatherServer.tickRegion(this, regionizedWorldData);
++            }
+             // Folia end - regionised ticking
+             //this.advanceWeatherCycle(); // Folia - regionised ticking
+         }
+@@ -1449,6 +1459,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+             this.server.getPlayerList().broadcastAll(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE, this.thunderLevel));
+         }
+         */
++        if (this.tensei.weather.perRegion) return;
+         ServerPlayer[] players = this.players.toArray(new ServerPlayer[0]); // Folia - region threading
+         for (ServerPlayer player : players) { // Folia - region threading
+             if (player.level() == this) {
+@@ -3199,4 +3210,55 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+         throw new UnsupportedOperationException(); // Folia - region threading
+     }
+     // Paper end - lag compensation
++
++    private @org.jetbrains.annotations.Nullable io.papermc.paper.threadedregions.RegionizedWorldData currentRegionDataOrNull() {
++        try {
++            return io.papermc.paper.threadedregions.TickRegionScheduler.getCurrentRegionizedWorldData();
++        } catch (Throwable t) {
++            return null;
++        }
++    }
++
++    private @org.jetbrains.annotations.Nullable io.papermc.paper.threadedregions.RegionizedWorldData.RegionalWeatherState regionalWeatherOrNull() {
++        final var data = currentRegionDataOrNull();
++        return data == null ? null : data.weatherRegional;
++    }
++
++    @Override
++    public boolean isRaining() {
++        if (!this.canHaveWeather()) return false;
++
++        final var st = regionalWeatherOrNull();
++        if (st != null) {
++            return st.rainLevel > 0.2f;
++        }
++        return super.isRaining();
++    }
++
++    @Override
++    public boolean isThundering() {
++        if (!this.canHaveWeather()) return false;
++
++        final var st = regionalWeatherOrNull();
++        if (st != null) {
++            return (st.thunderLevel * st.rainLevel) > 0.9f;
++        }
++        return super.isThundering();
++    }
++
++    public float getRainLevel(float partialTick) {
++        final var st = regionalWeatherOrNull();
++        if (st != null) {
++            return net.minecraft.util.Mth.lerp(partialTick, st.oRainLevel, st.rainLevel);
++        }
++        return super.getRainLevel(partialTick);
++    }
++
++    public float getThunderLevel(float partialTick) {
++        final var st = regionalWeatherOrNull();
++        if (st != null) {
++            return net.minecraft.util.Mth.lerp(partialTick, st.oThunderLevel, st.thunderLevel);
++        }
++        return super.getThunderLevel(partialTick);
++    }
+ }
+diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
+index 75efccc9dea9281dcfbc03251d4f9fd269297d7e..0330a42c712ea0f7846ee032c9e6eb96bcf230ad 100644
+--- a/net/minecraft/server/level/ServerPlayer.java
++++ b/net/minecraft/server/level/ServerPlayer.java
+@@ -3798,6 +3798,58 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+         }
+     }
+ 
++    private boolean tensei$regionalWeatherInit;
++    private boolean tensei$regionalWasRaining;
++    private float tensei$regionalRainLevel;
++    private float tensei$regionalThunderLevel;
++    public void tensei$syncRegionalWeather(final io.papermc.paper.threadedregions.RegionizedWorldData.RegionalWeatherState st) {
++        if (this.weatherType != null) {
++            return;
++        }
++
++        if (st == null || this.connection == null) {
++            return;
++        }
++
++        final boolean raining = st.raining;
++        final float rainLevel = st.rainLevel;
++        final float thunderLevel = st.thunderLevel;
++
++        // First sync (join / region move)
++        if (!this.tensei$regionalWeatherInit) {
++            this.connection.send(new ClientboundGameEventPacket(
++                    raining ? ClientboundGameEventPacket.START_RAINING : ClientboundGameEventPacket.STOP_RAINING, 0.0F
++            ));
++            this.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.RAIN_LEVEL_CHANGE, rainLevel));
++            this.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE, thunderLevel));
++
++            this.tensei$regionalWeatherInit = true;
++            this.tensei$regionalWasRaining = raining;
++            this.tensei$regionalRainLevel = rainLevel;
++            this.tensei$regionalThunderLevel = thunderLevel;
++            return;
++        }
++
++        // START/STOP raining
++        if (this.tensei$regionalWasRaining != raining) {
++            this.connection.send(new ClientboundGameEventPacket(
++                    raining ? ClientboundGameEventPacket.START_RAINING : ClientboundGameEventPacket.STOP_RAINING, 0.0F
++            ));
++            this.tensei$regionalWasRaining = raining;
++        }
++
++        // Level changes (epsilon to avoid spam)
++        if (Math.abs(this.tensei$regionalRainLevel - rainLevel) > 1.0E-4F) {
++            this.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.RAIN_LEVEL_CHANGE, rainLevel));
++            this.tensei$regionalRainLevel = rainLevel;
++        }
++
++        if (Math.abs(this.tensei$regionalThunderLevel - thunderLevel) > 1.0E-4F) {
++            this.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE, thunderLevel));
++            this.tensei$regionalThunderLevel = thunderLevel;
++        }
++    }
++
+     public void tickWeather() {
+         if (this.weatherType == null) return;
+ 
+diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
+index 54794e457b466f778d7c4741186f1b5ff4f7611d..e7d216d4752f9c805aa2021cc7c0a106d3d464d3 100644
+--- a/net/minecraft/world/level/Level.java
++++ b/net/minecraft/world/level/Level.java
+@@ -2096,6 +2096,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     public abstract TickRateManager tickRateManager();
+ 
+     public float getThunderLevel(final float a) {
++        if (this.tensei.weather.perRegion) {
++            var worldData = this.getCurrentWorldData();
++            if (worldData != null) {
++                var st = worldData.weatherRegional;
++                if (st != null && st.initialized) {
++                    return st.thunderLevel * this.getRainLevel(a);
++                }
++            }
++        }
+         return Mth.lerp(a, this.oThunderLevel, this.thunderLevel) * this.getRainLevel(a);
+     }
+ 
+@@ -2106,6 +2115,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+     }
+ 
+     public float getRainLevel(final float a) {
++        if (this.tensei.weather.perRegion) {
++            var worldData = this.getCurrentWorldData();
++            if (worldData != null) {
++                var st = worldData.weatherRegional;
++                if (st != null && st.initialized) {
++                    return st.rainLevel;
++                }
++            }
++        }
+         return Mth.lerp(a, this.oRainLevel, this.rainLevel);
+     }
+ 
