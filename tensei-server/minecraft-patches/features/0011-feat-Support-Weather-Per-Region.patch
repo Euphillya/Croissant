@@ -218,26 +218,26 @@ index d0826acd4de70a7030d408faeb42903900bbbb74..44ad876e5ccf44066ec28b073d226a82
 +
 +            if (st != null && st.initialized) {
 +                if (st.thundering) {
-+                    source.sendSuccess(() -> Component.translatable("commands.weather.get.thunder"), false);
++                    source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetThunder), false);
 +                    return 2;
 +                } else if (st.raining) {
-+                    source.sendSuccess(() -> Component.translatable("commands.weather.get.rain"), false);
++                    source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetRain), false);
 +                    return 1;
 +                } else {
-+                    source.sendSuccess(() -> Component.translatable("commands.weather.get.clear"), false);
++                    source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetClear), false);
 +                    return 0;
 +                }
 +            }
 +        }
 +
 +        if (level.isThundering()) {
-+            source.sendSuccess(() -> Component.translatable("commands.weather.get.thunder"), false);
++            source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetThunder), false);
 +            return 2;
 +        } else if (level.isRaining()) {
-+            source.sendSuccess(() -> Component.translatable("commands.weather.get.rain"), false);
++            source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetRain), false);
 +            return 1;
 +        } else {
-+            source.sendSuccess(() -> Component.translatable("commands.weather.get.clear"), false);
++            source.sendSuccess(() -> Component.translatable(level.tensei.weather.commandGetClear), false);
 +            return 0;
 +        }
 +    }

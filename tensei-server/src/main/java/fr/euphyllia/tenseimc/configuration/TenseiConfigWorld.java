@@ -193,5 +193,8 @@ public class TenseiConfigWorld extends ConfigurationPart {
     public class Weather extends ConfigurationPart {
         @Comment("Enabled weather per region.\nDefault: false")
         public boolean perRegion = false;
+        public String commandGetClear = "The weather is clear";
+        public String commandGetRain = "The weather is rainy";
+        public String commandGetThunder = "The weather is thundering";
     }
 }
