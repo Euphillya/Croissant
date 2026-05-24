@@ -92,10 +92,10 @@ index 658db8460122db271bbc3c2c0844574b8d75f044..d78d041847ac5e770a1eb9bccecf7bef
              .xmap(PlayerAdvancements.Data::new, PlayerAdvancements.Data::map);
  
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 04e99d0317833c863da027f2ba130c646961a995..b538bbf0301eaec42fe220109c7928c2fe1f435d 100644
+index ef203c2933971380bb374d74d3fe8d81f97ff2e7..276a6d85ce0263accbde205f51f40222107fea18 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -542,6 +542,10 @@ public abstract class PlayerList {
+@@ -528,6 +528,10 @@ public abstract class PlayerList {
          }
          // Paper end - Drop carried item when player has disconnected
          this.save(player);

@@ -6,7 +6,7 @@ Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index facc16a9019a0873f523b41c786409a582b90f23..697658f39d90bcbeeae15418d14690622749b669 100644
+index 838ca1aaad9a0ee54fb093c0cdda273762ed8c7f..9d983644c813eee05f2e189b92942c34ff5bb52a 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -18,7 +18,7 @@ index facc16a9019a0873f523b41c786409a582b90f23..697658f39d90bcbeeae15418d1469062
      private final SavedDataStorage savedDataStorage;
      // Paper - per-level GameRules
      private ServerConnectionListener connection;
-@@ -1155,6 +1155,14 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1143,6 +1143,14 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
          this.savedDataStorage.close();
          this.resources.close();
  
@@ -33,7 +33,7 @@ index facc16a9019a0873f523b41c786409a582b90f23..697658f39d90bcbeeae15418d1469062
          try {
              this.storageSource.close();
          } catch (IOException var4) {
-@@ -1332,6 +1340,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1320,6 +1328,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
              if (!this.initServer()) {
                  throw new IllegalStateException("Failed to initialize server");
              }
@@ -66,7 +66,7 @@ index facc16a9019a0873f523b41c786409a582b90f23..697658f39d90bcbeeae15418d1469062
              this.nextTickTimeNanos = Util.getNanos();
              this.initTickSchedule(); // Paper - improve tick loop
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa57fbd6b2 100644
+index 276a6d85ce0263accbde205f51f40222107fea18..a3aa29fd0641633c3e664a06fd3db06efc638d48 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -124,7 +124,7 @@ public abstract class PlayerList {
@@ -118,7 +118,7 @@ index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa
          NameAndId gameProfile = player.nameAndId();
          UserNameToIdResolver profileCache = this.server.services().nameToIdCache();
          Optional<NameAndId> oldProfile = profileCache.get(gameProfile.id());
-@@ -504,6 +537,29 @@ public abstract class PlayerList {
+@@ -498,6 +531,29 @@ public abstract class PlayerList {
          new io.canvasmc.canvas.event.PlayerSaveEvent(player.getBukkitEntity(), false).callEvent(); // Canvas - player save event
      }
  
@@ -148,7 +148,7 @@ index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa
      public net.kyori.adventure.text.@Nullable Component remove(final ServerPlayer player) { // CraftBukkit - return string // Paper - return Component
          // Paper start - Fix kick event leave message not being sent
          return this.remove(player, net.kyori.adventure.text.Component.translatable("multiplayer.player.left", net.kyori.adventure.text.format.NamedTextColor.YELLOW, io.papermc.paper.configuration.GlobalConfiguration.get().messages.useDisplayNameInQuitMessage ? player.getBukkitEntity().displayName() : io.papermc.paper.adventure.PaperAdventure.asAdventure(player.getDisplayName())));
-@@ -541,11 +597,15 @@ public abstract class PlayerList {
+@@ -527,11 +583,15 @@ public abstract class PlayerList {
              player.drop(carried, false);
          }
          // Paper end - Drop carried item when player has disconnected
@@ -169,7 +169,7 @@ index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa
          if (player.isPassenger()) {
              Entity vehicle = player.getRootVehicle();
              if (vehicle.hasExactlyOnePlayerPassenger()) {
-@@ -1367,6 +1427,16 @@ public abstract class PlayerList {
+@@ -1347,6 +1407,16 @@ public abstract class PlayerList {
          }
      }
      public ServerStatsCounter getPlayerStats(final GameProfile gameProfile) {
@@ -186,7 +186,7 @@ index b538bbf0301eaec42fe220109c7928c2fe1f435d..cf9da0c2b60eb6fd2a06821b03a761aa
              Path targetFile = this.locateStatsFile(gameProfile);
              return new ServerStatsCounter(this.server, targetFile);
      }
-@@ -1398,11 +1468,17 @@ public abstract class PlayerList {
+@@ -1378,11 +1448,17 @@ public abstract class PlayerList {
      public PlayerAdvancements getPlayerAdvancements(final ServerPlayer player) {
          UUID uuid = player.getUUID();
          PlayerAdvancements result = player.getAdvancements(); // CraftBukkit
