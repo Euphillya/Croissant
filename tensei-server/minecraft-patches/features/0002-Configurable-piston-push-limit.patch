@@ -5,33 +5,33 @@ Subject: [PATCH] Configurable piston push limit
 
 
 diff --git a/net/minecraft/world/level/block/piston/PistonStructureResolver.java b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
-index 4881cf351f673a38905aebb660fcdb218d69158d..8152f42ecb5712134f58d834afd35b27241489a8 100644
+index 4a2cd2241a65fe051aae0b87e33580784bd9c2cb..2784a1d4a820d7ca6cfa42622409e12f75d0310c 100644
 --- a/net/minecraft/world/level/block/piston/PistonStructureResolver.java
 +++ b/net/minecraft/world/level/block/piston/PistonStructureResolver.java
-@@ -81,7 +81,7 @@ public class PistonStructureResolver {
-             return true;
-         } else {
-             int blockCount = 1;
--            if (blockCount + this.toPush.size() > 12) {
-+            if (blockCount + this.toPush.size() > this.level.tensei.blocks.piston.pushLimit) {
+@@ -90,7 +90,7 @@ public class PistonStructureResolver {
+         }
+ 
+         int blockCount = 1;
+-        if (blockCount + this.toPush.size() > 12) {
++        if (blockCount + this.toPush.size() > this.level.tensei.blocks.piston.pushLimit) {
+             return false;
+         }
+ 
+@@ -105,7 +105,7 @@ public class PistonStructureResolver {
+                 break;
+             }
+ 
+-            if (++blockCount + this.toPush.size() > 12) {
++            if (++blockCount + this.toPush.size() > this.level.tensei.blocks.piston.pushLimit) {
                  return false;
-             } else {
-                 while (isSticky(nextState)) {
-@@ -95,7 +95,7 @@ public class PistonStructureResolver {
-                         break;
-                     }
+             }
+         }
+@@ -149,7 +149,7 @@ public class PistonStructureResolver {
+                 return true;
+             }
  
--                    if (++blockCount + this.toPush.size() > 12) {
-+                    if (++blockCount + this.toPush.size() > this.level.tensei.blocks.piston.pushLimit) {
-                         return false;
-                     }
-                 }
-@@ -139,7 +139,7 @@ public class PistonStructureResolver {
-                         return true;
-                     }
- 
--                    if (this.toPush.size() >= 12) {
-+                    if (this.toPush.size() >= this.level.tensei.blocks.piston.pushLimit) {
-                         return false;
-                     }
+-            if (this.toPush.size() >= 12) {
++            if (this.toPush.size() >= this.level.tensei.blocks.piston.pushLimit) {
+                 return false;
+             }
  

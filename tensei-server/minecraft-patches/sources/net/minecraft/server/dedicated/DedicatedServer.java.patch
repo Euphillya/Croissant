@@ -1,6 +1,6 @@
 --- a/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -296,6 +_,10 @@
+@@ -291,6 +_,10 @@
          net.minecraft.world.level.block.state.BlockBehaviour.BlockStateBase.canvas$initPathTypeCache();
          // Canvas end - pre start server config hook
          // Paper end - initialize global and world-defaults configuration

@@ -5,7 +5,7 @@ Subject: [PATCH] feat: Add Tensei config support for sugar cane bonemeal
 
 
 diff --git a/net/minecraft/world/level/block/SugarCaneBlock.java b/net/minecraft/world/level/block/SugarCaneBlock.java
-index ed4a669022ccc3b3722cb1bedf4b9668872991d7..fa94371817354a0a42e92a2138422232d830dff1 100644
+index 31b80cd9173a7fc2e9bfcdcce22beee97f97735b..e815aec7b8ca014d58cd8565412d8e42b718be5c 100644
 --- a/net/minecraft/world/level/block/SugarCaneBlock.java
 +++ b/net/minecraft/world/level/block/SugarCaneBlock.java
 @@ -137,7 +137,10 @@ public class SugarCaneBlock extends Block implements BonemealableBlock { // Canv

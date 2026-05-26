@@ -6,7 +6,7 @@ Subject: [PATCH] Expose PlayerAdvancements - PlayerDataStorage -
 
 
 diff --git a/net/minecraft/server/PlayerAdvancements.java b/net/minecraft/server/PlayerAdvancements.java
-index 658db8460122db271bbc3c2c0844574b8d75f044..d78d041847ac5e770a1eb9bccecf7bef29bd789c 100644
+index f8c3b8b1f153157074452b3d13b94efa568d048e..6399f8d8d4d4fc9e18aaeb4c4318f1a8f5d51e86 100644
 --- a/net/minecraft/server/PlayerAdvancements.java
 +++ b/net/minecraft/server/PlayerAdvancements.java
 @@ -45,7 +45,7 @@ import net.minecraft.world.level.gamerules.GameRules;
@@ -92,10 +92,10 @@ index 658db8460122db271bbc3c2c0844574b8d75f044..d78d041847ac5e770a1eb9bccecf7bef
              .xmap(PlayerAdvancements.Data::new, PlayerAdvancements.Data::map);
  
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index ef203c2933971380bb374d74d3fe8d81f97ff2e7..276a6d85ce0263accbde205f51f40222107fea18 100644
+index 848438219577ebd18c5bf6ae33a3efffb17d79a9..edf01eb37d17b9b75911878f5e810011622d95b4 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
-@@ -528,6 +528,10 @@ public abstract class PlayerList {
+@@ -523,6 +523,10 @@ public abstract class PlayerList {
          }
          // Paper end - Drop carried item when player has disconnected
          this.save(player);
@@ -107,7 +107,7 @@ index ef203c2933971380bb374d74d3fe8d81f97ff2e7..276a6d85ce0263accbde205f51f40222
              Entity vehicle = player.getRootVehicle();
              if (vehicle.hasExactlyOnePlayerPassenger()) {
 diff --git a/net/minecraft/stats/ServerStatsCounter.java b/net/minecraft/stats/ServerStatsCounter.java
-index 6764f97ac88d63c1e1d4f62014d4c16b929767e8..d49d7cf1e652054d3ae0c5833ab5df31dc9cd7aa 100644
+index f5beb001b938072e78c0ead7e0ad0499784ed1cf..dc0076f55f728ceea1727c24384a337c4a9aad45 100644
 --- a/net/minecraft/stats/ServerStatsCounter.java
 +++ b/net/minecraft/stats/ServerStatsCounter.java
 @@ -38,7 +38,7 @@ import net.minecraft.util.datafix.DataFixTypes;
@@ -128,7 +128,7 @@ index 6764f97ac88d63c1e1d4f62014d4c16b929767e8..d49d7cf1e652054d3ae0c5833ab5df31
          if (org.spigotmc.SpigotConfig.disableStatSaving) return; // Spigot
          try {
 diff --git a/net/minecraft/world/level/storage/PlayerDataStorage.java b/net/minecraft/world/level/storage/PlayerDataStorage.java
-index c5898bfb8b4f075b08090cba2e9f980174e0a326..e5c1fb0d2e87ff98b671076949f046838571861c 100644
+index eddb6ebe3fa50a818e54079b73ba117be0abd195..c3e5dfc9073e2a323ec13feaf76c4b49f5d05bd3 100644
 --- a/net/minecraft/world/level/storage/PlayerDataStorage.java
 +++ b/net/minecraft/world/level/storage/PlayerDataStorage.java
 @@ -19,7 +19,7 @@ import net.minecraft.util.datafix.DataFixTypes;

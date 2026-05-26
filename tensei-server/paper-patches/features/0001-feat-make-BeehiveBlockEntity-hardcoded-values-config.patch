@@ -5,18 +5,22 @@ Subject: [PATCH] feat: make BeehiveBlockEntity hardcoded values configurable
 
 
 diff --git a/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java b/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
-index 6b5853ced761ef55de883fe86c009b94ccb159fc..0396f3468d3372d3576e501490353ff80043a0b7 100644
+index efbc098faa4cc2ff99b7f245fb88692314503182..b10dcc42e45a65a007ca86242681d375a80e7169 100644
 --- a/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
 +++ b/src/main/java/org/bukkit/craftbukkit/block/CapturedBlockState.java
-@@ -55,9 +55,9 @@ public final class CapturedBlockState extends CraftBlockState {
-             // Begin copied block from BeehiveDecorator
-             worldGenLevel.getBlockEntity(pos, BlockEntityType.BEEHIVE).ifPresent(beehiveBlockEntity -> {
-                 int i1 = 2 + randomSource.nextInt(2);
--
-+                int minTicks = worldGenLevel.getLevel().tensei.blocks.beehive.minOccupationTicksNectarless;
-                 for (int i2 = 0; i2 < i1; i2++) {
--                    beehiveBlockEntity.storeBee(BeehiveBlockEntity.Occupant.create(randomSource.nextInt(599)));
-+                    beehiveBlockEntity.storeBee(BeehiveBlockEntity.Occupant.create(randomSource.nextInt(599), minTicks));
+@@ -52,12 +52,13 @@ public final class CapturedBlockState extends CraftBlockState {
+             BlockPos pos = this.getPosition();
+             RandomSource random = level.getRandom();
+ 
+-            // copied from BeehiveDecorator
++            // Begin copied block from BeehiveDecorator
+             level.getBlockEntity(pos, BlockEntityType.BEEHIVE).ifPresent(beehive -> {
+                 int numBees = 2 + random.nextInt(2);
++                int minTicks = level.getLevel().tensei.blocks.beehive.minOccupationTicksNectarless;
+ 
+                 for (int count = 0; count < numBees; count++) {
+-                    beehive.storeBee(BeehiveBlockEntity.Occupant.create(random.nextInt(599)));
++                    beehive.storeBee(BeehiveBlockEntity.Occupant.create(random.nextInt(599), minTicks));
                  }
              });
-             // End copied block
+         }

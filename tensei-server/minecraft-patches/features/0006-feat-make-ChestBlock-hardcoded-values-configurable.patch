@@ -5,10 +5,10 @@ Subject: [PATCH] feat: make ChestBlock hardcoded values configurable
 
 
 diff --git a/net/minecraft/world/level/block/ChestBlock.java b/net/minecraft/world/level/block/ChestBlock.java
-index ee6f96020d3eae1d7c7fd141b2460d3d46ad0a3f..b29af4dae1cb9846806cff27bdef80084d35a371 100644
+index 66608248dfa13aa1a37c168bc1be21017c49fcb5..7f47ea6c2f63858b49f75b23da2c4bfaf21ffb50 100644
 --- a/net/minecraft/world/level/block/ChestBlock.java
 +++ b/net/minecraft/world/level/block/ChestBlock.java
-@@ -258,7 +258,7 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+@@ -253,7 +253,7 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
              type = this.getChestType(context.getLevel(), context.getClickedPos(), facingDirection);
          }
  
@@ -17,7 +17,7 @@ index ee6f96020d3eae1d7c7fd141b2460d3d46ad0a3f..b29af4dae1cb9846806cff27bdef8008
      }
  
      protected ChestType getChestType(final Level level, final BlockPos pos, final Direction facingDirection) {
-@@ -413,6 +413,11 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
+@@ -408,6 +408,11 @@ public class ChestBlock extends AbstractChestBlock<ChestBlockEntity> implements
  
      @Override
      protected int getAnalogOutputSignal(final BlockState state, final Level level, final BlockPos pos, final Direction direction) {

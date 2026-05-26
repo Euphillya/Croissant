@@ -285,10 +285,10 @@ index d0826acd4de70a7030d408faeb42903900bbbb74..a2f1d3c014d897826569c06911b436d7
 +    }
  }
 diff --git a/net/minecraft/server/level/ServerChunkCache.java b/net/minecraft/server/level/ServerChunkCache.java
-index 0e5d6bd6c6ed57c2832a5f3df7eeddd50613c5f2..802f950442d49ec9653a50a54ecaae91e82f12f5 100644
+index 64e66e4a4aecb7793faf9e48cefdb197842dfe0e..70ddca68d396d5c35cc83f9480d7fcf9420af46e 100644
 --- a/net/minecraft/server/level/ServerChunkCache.java
 +++ b/net/minecraft/server/level/ServerChunkCache.java
-@@ -561,6 +561,31 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -559,6 +559,31 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
              spawnCookie = NaturalSpawner.createState(chunkCount, !this.level.paperConfig().entities.spawning.perPlayerMobSpawns ? new LocalMobCapCalculator(this.chunkMap) : null, false, regionizedWorldData); // Folia - region threading - note: function only cares about loaded entities, doesn't need all // Canvas - optimize natural spawning
          }
          // Paper end - Optional per player mob spawns
@@ -321,10 +321,10 @@ index 0e5d6bd6c6ed57c2832a5f3df7eeddd50613c5f2..802f950442d49ec9653a50a54ecaae91
          boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
          int tickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43a0a77cce 100644
+index 04e0d81c6df6e6a3d4d946ecba9e99fcd72cbab6..f74acade43fc20cab9059581c1f6bb72d26308c7 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
-@@ -889,6 +889,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -838,6 +838,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
          return previous;
      }
  
@@ -332,7 +332,7 @@ index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43
      public void tick(BooleanSupplier haveTime, final io.papermc.paper.threadedregions.TickRegions.TickRegionData region) { // Folia - regionised ticking
          final io.papermc.paper.threadedregions.RegionizedWorldData regionizedWorldData = this.getCurrentWorldData(); // Folia - regionised ticking
          regionizedWorldData.setHandlingTick(true); // Folia - regionised ticking
-@@ -910,6 +911,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -859,6 +860,15 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
              for (WorldBorder worldBorder : worldBorders) {
                  worldBorder.tick();
              }
@@ -348,7 +348,7 @@ index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43
              // Folia end - regionised ticking
              //this.advanceWeatherCycle(); // Folia - regionised ticking
          }
-@@ -1449,6 +1459,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -1398,6 +1408,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
              this.server.getPlayerList().broadcastAll(new ClientboundGameEventPacket(ClientboundGameEventPacket.THUNDER_LEVEL_CHANGE, this.thunderLevel));
          }
          */
@@ -356,7 +356,7 @@ index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43
          ServerPlayer[] players = this.players.toArray(new ServerPlayer[0]); // Folia - region threading
          for (ServerPlayer player : players) { // Folia - region threading
              if (player.level() == this) {
-@@ -3199,4 +3210,55 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
+@@ -3143,4 +3154,55 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
          throw new UnsupportedOperationException(); // Folia - region threading
      }
      // Paper end - lag compensation
@@ -413,10 +413,10 @@ index b8fd696bd0b759f9094b6f1de8fd3256ef7935f9..149a5faff734871cdcf6a0656350dd43
 +    }
  }
 diff --git a/net/minecraft/server/level/ServerPlayer.java b/net/minecraft/server/level/ServerPlayer.java
-index 75efccc9dea9281dcfbc03251d4f9fd269297d7e..0330a42c712ea0f7846ee032c9e6eb96bcf230ad 100644
+index e2fc47d62f40b4e7274457182a0408b042f2af78..3e32b0a37d413c0a43b0084bbe007723465cd665 100644
 --- a/net/minecraft/server/level/ServerPlayer.java
 +++ b/net/minecraft/server/level/ServerPlayer.java
-@@ -3798,6 +3798,58 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
+@@ -3768,6 +3768,58 @@ public class ServerPlayer extends Player implements ca.spottedleaf.moonrise.patc
          }
      }
  
@@ -476,10 +476,10 @@ index 75efccc9dea9281dcfbc03251d4f9fd269297d7e..0330a42c712ea0f7846ee032c9e6eb96
          if (this.weatherType == null) return;
  
 diff --git a/net/minecraft/world/level/Level.java b/net/minecraft/world/level/Level.java
-index 54794e457b466f778d7c4741186f1b5ff4f7611d..e7d216d4752f9c805aa2021cc7c0a106d3d464d3 100644
+index f7b1a50b74e253b6b2c144f7d792e67eea642e36..793e0db1c3c50412ff7e207e5e8429466659a0e0 100644
 --- a/net/minecraft/world/level/Level.java
 +++ b/net/minecraft/world/level/Level.java
-@@ -2096,6 +2096,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -2144,6 +2144,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
      public abstract TickRateManager tickRateManager();
  
      public float getThunderLevel(final float a) {
@@ -495,7 +495,7 @@ index 54794e457b466f778d7c4741186f1b5ff4f7611d..e7d216d4752f9c805aa2021cc7c0a106
          return Mth.lerp(a, this.oThunderLevel, this.thunderLevel) * this.getRainLevel(a);
      }
  
-@@ -2106,6 +2115,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
+@@ -2154,6 +2163,15 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
      }
  
      public float getRainLevel(final float a) {
