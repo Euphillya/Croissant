@@ -5,8 +5,68 @@ Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
  allows for a kind of inter-server synchronization.
 
 
+diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
+index 87bc3f10397b0d4ab75ce81c611b622e235eb86b..5c2a2ee916087990a8a27f5f5e04a40926e96aa3 100644
+--- a/net/minecraft/server/MinecraftServer.java
++++ b/net/minecraft/server/MinecraftServer.java
+@@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+     public static final Supplier<GameRules> DEFAULT_GAME_RULES = () -> new GameRules(WorldDataConfiguration.DEFAULT.enabledFeatures());
+     public static final NameAndId ANONYMOUS_PLAYER_PROFILE = new NameAndId(Util.NIL_UUID, "Anonymous Player");
+     public LevelStorageSource.LevelStorageAccess storageSource;
+-    public final PlayerDataStorage playerDataStorage;
++    public PlayerDataStorage playerDataStorage; // TenseiMC - non-final to allow Postgres swap
+     private final SavedDataStorage savedDataStorage;
+     // Paper - per-level GameRules
+     private ServerConnectionListener connection;
+@@ -1132,7 +1132,13 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+         // Folia end - region threading
+         this.savedDataStorage.close();
+         this.resources.close();
+-
++        // TenseiMC start - shutdown Postgres storage
++        try {
++            fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.shutdown();
++        } catch (Exception ex) {
++            LOGGER.error("Failed to shutdown TenseiMC storage", ex);
++        }
++        // TenseiMC end
+         try {
+             this.storageSource.close();
+         } catch (IOException e) {
+@@ -1310,7 +1316,31 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+             if (!this.initServer()) {
+                 throw new IllegalStateException("Failed to initialize server");
+             }
++            // TenseiMC start - initialize Postgres storage
++            try {
++                fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.init(
++                        fr.euphyllia.tenseimc.storage.config.StorageConfigMapper.toStorageConfig(
++                                fr.euphyllia.tenseimc.configuration.TenseiConfigGlobal.get().storage
++                        ),
++                        this,
++                        this.getServerDirectory()
++                );
+ 
++                if (fr.euphyllia.tenseimc.storage.database.postgres.PostgresManager.isEnabled()) {
++                    var pgStorage =
++                            new fr.euphyllia.tenseimc.storage.extension.postgresql.PostgresPlayerDataStorage(
++                                    this.storageSource,
++                                    this.fixerUpper
++                            );
++                    this.playerDataStorage = pgStorage;
++                    this.getPlayerList().playerIo = pgStorage;
++                    LOGGER.info("PlayerDataStorage swapped to PostgresPlayerDataStorage");
++                }
++            } catch (Exception ex) {
++                LOGGER.error("Failed to initialize TenseiMC storage", ex);
++                throw new IllegalStateException("Storage initialization failed", ex);
++            }
++            // TenseiMC end
+             this.nextTickTimeNanos = Util.getNanos();
+             this.initTickSchedule(); // Paper - improve tick loop
+             this.statusIcon = this.loadStatusIcon().orElse(null);
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index edf01eb37d17b9b75911878f5e810011622d95b4..b960e278aa9c91b5732bbdac5b629ab144db3de3 100644
+index edf01eb37d17b9b75911878f5e810011622d95b4..ace7ad2b8ec7736b1fa80cbb5992e490f3f8786a 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -123,7 +123,7 @@ public abstract class PlayerList {
@@ -14,7 +74,7 @@ index edf01eb37d17b9b75911878f5e810011622d95b4..b960e278aa9c91b5732bbdac5b629ab1
      // private final Map<UUID, PlayerAdvancements> advancements = Maps.newHashMap();
      // CraftBukkit end
 -    public final PlayerDataStorage playerIo;
-+    public PlayerDataStorage playerIo; // TenseiMC - non-final to allow Postgres swap
++    public PlayerDataStorage playerIo;
      private final LayeredRegistryAccess<RegistryLayer> registries;
      private int viewDistance;
      private int simulationDistance;
