@@ -6,7 +6,7 @@ Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index 87bc3f10397b0d4ab75ce81c611b622e235eb86b..5c2a2ee916087990a8a27f5f5e04a40926e96aa3 100644
+index e0cd69a8bd93e0f6807d1da6f909abebdc8fd517..d349be3d9fbde05e7c69289e14a0805929b7fcc8 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
@@ -66,7 +66,7 @@ index 87bc3f10397b0d4ab75ce81c611b622e235eb86b..5c2a2ee916087990a8a27f5f5e04a409
              this.initTickSchedule(); // Paper - improve tick loop
              this.statusIcon = this.loadStatusIcon().orElse(null);
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index edf01eb37d17b9b75911878f5e810011622d95b4..ace7ad2b8ec7736b1fa80cbb5992e490f3f8786a 100644
+index 229bbfb222859d2f45211faf61cf17c1a1050401..63c0b4804163eebacc71a179bd809e0b9d4135c5 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -123,7 +123,7 @@ public abstract class PlayerList {
