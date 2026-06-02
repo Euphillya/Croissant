@@ -1,0 +1,105 @@
+--- a/src/main/java/io/canvasmc/canvas/spark/plugin/FoliaWorldInfoProvider.java
++++ b/src/main/java/io/canvasmc/canvas/spark/plugin/FoliaWorldInfoProvider.java
+@@ -2,6 +_,7 @@
+ 
+ import ca.spottedleaf.concurrentutil.util.Priority;
+ import ca.spottedleaf.moonrise.common.time.TickData;
++import fr.euphyllia.tenseimc.spark.RegionStats;
+ import io.canvasmc.canvas.spark.FoliaSparkPlugin;
+ import io.canvasmc.canvas.spark.profiler.RegionProfiler;
+ import io.canvasmc.canvas.spark.profiler.RegionScheduleHandlePinner;
+@@ -141,35 +_,43 @@
+             else return new ChunksResult<>(); // global tick, doesn't own chunks
+         }
+ 
++        final long now = System.nanoTime();
+         for (World world : this.server.getWorlds()) {
+             final ServerLevel level = ((CraftWorld) world).getHandle();
+             final Map<Long, List<FoliaChunkInfo>> byRegion = new HashMap<>();
+             final Map<Long, ChunkRegionCenter> centerByRegion = new HashMap<>();
+             final String worldKey = world.key().asMinimalString().replace('/', '_').replace(':', '_');
+             final String worldCapitalized = worldKey.substring(0, 1).toUpperCase(Locale.ROOT) + worldKey.substring(1);
+-
++            final Map<Long, fr.euphyllia.tenseimc.spark.RegionStats> statsByRegion = new HashMap<>();
+             for (Chunk chunk : world.getLoadedChunks()) {
+                 if (chunk == null) continue;
++                final var stats = FoliaChunkInfo.resolveRegionStats(level, chunk.getX(), chunk.getZ(), now, statsByRegion);
+                 final ChunkRegionCenter center = FoliaChunkInfo.resolveRegionCenter(level, chunk.getX(), chunk.getZ(), centerByRegion);
+-                final FoliaChunkInfo info = new FoliaChunkInfo(chunk, world, this.plugin, center);
++                final FoliaChunkInfo info = new FoliaChunkInfo(chunk, world, this.plugin, center, stats);
+                 byRegion.computeIfAbsent(center.id(), k -> new ArrayList<>()).add(info);
+             }
+ 
+             for (Map.Entry<Long, List<FoliaChunkInfo>> entry : byRegion.entrySet()) {
+                 final ChunkRegionCenter center = centerByRegion.getOrDefault(entry.getKey(), ChunkRegionCenter.UNKNOWN);
+-                data.put(buildRegionKey(worldCapitalized, center), entry.getValue());
++                final fr.euphyllia.tenseimc.spark.RegionStats stats = statsByRegion.getOrDefault(
++                        entry.getKey(), fr.euphyllia.tenseimc.spark.RegionStats.UNKNOWN
++                );
++                data.put(buildRegionKey(worldCapitalized, center, stats), entry.getValue());
+             }
+         }
+ 
+         return data;
+     }
+ 
+-    private static String buildRegionKey(String worldCapitalized, ChunkRegionCenter center) {
++    private static String buildRegionKey(String worldCapitalized, ChunkRegionCenter center, fr.euphyllia.tenseimc.spark.RegionStats stats) {
+         if (center.id() == -1L) {
+             return worldCapitalized + " [region=unknown]";
+         }
+ 
+-        return worldCapitalized + " region at " + center.centerBlockX() + ", " + center.centerBlockZ();
++        return worldCapitalized + " region at " + center.centerBlockX() + ", " + center.centerBlockZ()
++                + " [ TPS: " + String.format("%.1f", stats.tps())
++                + " - MSPT: " + String.format("%.2f", stats.mspt()) + "ms"
++                + " - Util: " + String.format("%.2f", stats.util() * 100.0) + "% ]";
+     }
+ 
+     @Override
+@@ -225,10 +_,44 @@
+         }
+ 
+         FoliaChunkInfo(@NonNull Chunk chunk, World world, FoliaSparkPlugin plugin, ChunkRegionCenter center) {
+-            super(chunk.getX(), chunk.getZ(), center);
++            this(chunk, world, plugin, center,
++                    resolveRegionStats(
++                            ((CraftWorld) world).getHandle(),
++                            chunk.getX(), chunk.getZ(),
++                            System.nanoTime(),
++                            new HashMap<>()
++                    )
++            );
++        }
++
++        FoliaChunkInfo(Chunk chunk, World world, FoliaSparkPlugin plugin, ChunkRegionCenter center, RegionStats stats) {
++            super(chunk.getX(), chunk.getZ(), center, stats);
+ 
+             Executor executor = task -> RegionizedServer.getInstance().taskQueue.queueTickTaskQueue(((CraftWorld) world).getHandle(), getX(), getZ(), task, Priority.BLOCKING);
+             this.entityCounts = CompletableFuture.supplyAsync(() -> calculate(chunk), executor);
++        }
++
++        private static fr.euphyllia.tenseimc.spark.RegionStats resolveRegionStats(@NonNull ServerLevel level, int chunkX, int chunkZ, long now, @NonNull Map<Long, fr.euphyllia.tenseimc.spark.RegionStats> cache) {
++            final var region = level.regioniser.getRegionAtUnsynchronised(chunkX, chunkZ);
++
++            if (region == null) return fr.euphyllia.tenseimc.spark.RegionStats.UNKNOWN;
++            final long id = region.id;
++            final var cached = cache.get(id);
++            if (cached != null) return cached;
++
++            final TickData.TickReportData tickReportData = region.getData().getRegionSchedulingHandle().getTickReport5s(System.nanoTime());
++
++            final TickData.SegmentedAverage tpsAverage = tickReportData.tpsData();
++            final TickData.SegmentedAverage msptAverage = tickReportData.timePerTickData();
++
++            final double utilPercent = tickReportData.utilisation();
++            final double tps = tpsAverage.segmentAll().average();
++            final double mspt = msptAverage.segmentAll().average() / 1.0E6;
++
++            final fr.euphyllia.tenseimc.spark.RegionStats stats = new fr.euphyllia.tenseimc.spark.RegionStats(id, tps, mspt, utilPercent);
++            cache.put(id, stats);
++
++            return stats;
+         }
+ 
+         private static ChunkRegionCenter resolveRegionCenter(@NonNull ServerLevel level, int chunkX, int chunkZ, @NonNull Map<Long, ChunkRegionCenter> cache) {
