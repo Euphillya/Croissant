@@ -66,7 +66,7 @@ index e0cd69a8bd93e0f6807d1da6f909abebdc8fd517..d349be3d9fbde05e7c69289e14a08059
              this.initTickSchedule(); // Paper - improve tick loop
              this.statusIcon = this.loadStatusIcon().orElse(null);
 diff --git a/net/minecraft/server/players/PlayerList.java b/net/minecraft/server/players/PlayerList.java
-index 229bbfb222859d2f45211faf61cf17c1a1050401..63c0b4804163eebacc71a179bd809e0b9d4135c5 100644
+index d67b1fa746e117f27c494a70f68e40a46dd29f1c..0c24ecfd9581fd0ad98c5a1394227314e545577c 100644
 --- a/net/minecraft/server/players/PlayerList.java
 +++ b/net/minecraft/server/players/PlayerList.java
 @@ -123,7 +123,7 @@ public abstract class PlayerList {
@@ -166,7 +166,7 @@ index 229bbfb222859d2f45211faf61cf17c1a1050401..63c0b4804163eebacc71a179bd809e0b
          // TenseiMC end - force save stats + advancements disconnect
          if (player.isPassenger()) {
              Entity vehicle = player.getRootVehicle();
-@@ -1344,6 +1401,16 @@ public abstract class PlayerList {
+@@ -1345,6 +1402,16 @@ public abstract class PlayerList {
          }
      }
      public ServerStatsCounter getPlayerStats(final GameProfile gameProfile) {
@@ -183,7 +183,7 @@ index 229bbfb222859d2f45211faf61cf17c1a1050401..63c0b4804163eebacc71a179bd809e0b
              Path targetFile = this.locateStatsFile(gameProfile);
              return new ServerStatsCounter(this.server, targetFile);
      }
-@@ -1375,12 +1442,17 @@ public abstract class PlayerList {
+@@ -1376,12 +1443,17 @@ public abstract class PlayerList {
      public PlayerAdvancements getPlayerAdvancements(final ServerPlayer player) {
          UUID uuid = player.getUUID();
          PlayerAdvancements result = player.getAdvancements(); // CraftBukkit
