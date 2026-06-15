@@ -6,7 +6,7 @@ Subject: [PATCH] The possibility of saving player data on a PostgreSQL server
 
 
 diff --git a/net/minecraft/server/MinecraftServer.java b/net/minecraft/server/MinecraftServer.java
-index e0cd69a8bd93e0f6807d1da6f909abebdc8fd517..d349be3d9fbde05e7c69289e14a0805929b7fcc8 100644
+index ba0c6a119b0ece78f8f10312b95853eb9fb489bd..d492cd9218aa383d7a9a5660ea479d230cb88498 100644
 --- a/net/minecraft/server/MinecraftServer.java
 +++ b/net/minecraft/server/MinecraftServer.java
 @@ -207,7 +207,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa

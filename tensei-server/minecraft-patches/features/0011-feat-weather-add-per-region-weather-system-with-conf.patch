@@ -321,7 +321,7 @@ index 64e66e4a4aecb7793faf9e48cefdb197842dfe0e..70ddca68d396d5c35cc83f9480d7fcf9
          boolean doMobSpawning = this.level.getGameRules().get(GameRules.SPAWN_MOBS) && !this.level.getLocalPlayers().isEmpty(); // CraftBukkit // Folia - region threading
          int tickSpeed = this.level.getGameRules().get(GameRules.RANDOM_TICK_SPEED);
 diff --git a/net/minecraft/server/level/ServerLevel.java b/net/minecraft/server/level/ServerLevel.java
-index 04e0d81c6df6e6a3d4d946ecba9e99fcd72cbab6..f74acade43fc20cab9059581c1f6bb72d26308c7 100644
+index 71189ec96ccd2ef6401e5b108a347accf7d38e2c..72fb556b8f154aa7f9c1e62189228acd399facdc 100644
 --- a/net/minecraft/server/level/ServerLevel.java
 +++ b/net/minecraft/server/level/ServerLevel.java
 @@ -838,6 +838,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ServerEntityGet
